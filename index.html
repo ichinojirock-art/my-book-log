@@ -3,50 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Book Log Ultra V2</title>
+    <title>My Book Log Ultra V3</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
         .hidden { display: none !important; }
         
-        /* 1行に並ぶメインボタン */
+        /* メインアクションボタン（1行配置） */
         .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; }
         .btn { padding: 10px 5px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; flex: 1; }
         .btn-main { background: var(--primary); color: white; }
         .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); }
         .btn-export { border-color: var(--success); color: var(--success); }
         
-        /* Camera */
+        /* カメラ表示エリア */
         #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
         #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Modal & Preview Buttons */
+        /* モーダル & ボタン均等配置 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; width: 90%; max-width: 400px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
         input, select, textarea { width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .modal-footer { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-confirm { background: var(--success); color: white; flex: 1; padding: 12px; }
-        .btn-cancel { background: var(--danger); color: white; flex: 1; padding: 12px; }
+        .btn-confirm { background: var(--success); color: white; flex: 1; padding: 12px; height: 50px; }
+        .btn-cancel { background: var(--danger); color: white; flex: 1; padding: 12px; height: 50px; }
 
-        /* Calendar */
+        /* カレンダー */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #ddd; border: 1px solid #ddd; }
         .calendar-day { background: white; min-height: 50px; padding: 2px; font-size: 11px; text-align: center; cursor: pointer; }
         .calendar-day.active { background: #e8f0fe; font-weight: bold; border: 2px solid var(--primary); box-sizing: border-box; }
         .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; margin-top: 2px; }
 
-        /* List display refinements */
+        /* リスト表示（カード） */
         .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
         .book-card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; display: flex; flex-direction: column; }
         .book-card img { width: 100%; border-radius: 6px; margin-bottom: 8px; }
         .book-info { font-size: 12px; line-height: 1.4; flex-grow: 1; }
         .book-meta { font-size: 10px; color: #666; margin-top: 4px; }
-        .book-comment { font-style: italic; color: #444; border-top: 1px solid #f0f0f0; margin-top: 8px; padding-top: 5px; }
+        .book-comment { font-style: italic; color: #444; border-top: 1px solid #f0f0f0; margin-top: 8px; padding-top: 5px; font-size: 11px; }
         
         .actions { display: flex; gap: 5px; margin-top: 10px; }
         .btn-sm { padding: 6px; font-size: 11px; flex: 1; }
         
         .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+
+        /* 表形式の調整 */
+        .table-view { width: 100%; border-collapse: collapse; background: white; font-size: 12px; border-radius: 10px; overflow: hidden; }
+        .table-view th { background: #eee; padding: 10px; text-align: left; }
+        .table-view td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .table-thumb { width: 40px; height: auto; border-radius: 3px; display: block; }
     </style>
 </head>
 <body>
@@ -115,10 +121,10 @@
     let genres = JSON.parse(localStorage.getItem('myGenres')) || ["恋愛", "バトル", "ミステリ", "その他"];
     let currentView = 'card';
     let editingIndex = -1; 
-    let calDate = new Date();
-    let filterDate = null;
+    let calDate = new Date(); // カレンダー表示用の基準日
+    let filterDate = null;    // 特定の日付選択フィルタ
 
-    // --- Scanner Logic ---
+    // --- スキャン管理 ---
     function toggleScanner() {
         const el = document.getElementById('interactive');
         if (el.classList.contains('hidden')) startScanner(); else stopScanner();
@@ -167,7 +173,7 @@
         startScanner();
     }
 
-    // --- Data Logic ---
+    // --- データ操作 ---
     function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"" }, -1); }
 
     function openModal(data, index) {
@@ -217,7 +223,7 @@
         }
     }
 
-    // --- Rendering Logic ---
+    // --- 表示ロジック ---
     function setView(v) { currentView = v; filterDate = null; render(); }
 
     function render() {
@@ -226,26 +232,47 @@
         const calArea = document.getElementById('calendarArea');
         const gFilter = document.getElementById('genreFilter').value;
         
+        // 全データにインデックスを付与
         let filtered = books.map((b, i) => ({...b, originalIndex: i}));
-        if (gFilter !== 'all') filtered = filtered.filter(b => b.genre === gFilter);
-        if (filterDate) filtered = filtered.filter(b => b.date === filterDate);
 
+        // ジャンルフィルタ
+        if (gFilter !== 'all') filtered = filtered.filter(b => b.genre === gFilter);
+
+        // カレンダー表示時の月・日フィルタ
         calArea.classList.toggle('hidden', currentView !== 'calendar');
-        if (currentView === 'calendar') renderCalendar();
+        if (currentView === 'calendar') {
+            const year = calDate.getFullYear();
+            const month = calDate.getMonth() + 1;
+            const prefix = `${year}-${String(month).padStart(2, '0')}`;
+            
+            if (filterDate) {
+                // 特定の日付が選択されている場合
+                filtered = filtered.filter(b => b.date === filterDate);
+            } else {
+                // 日付未選択ならその月全体
+                filtered = filtered.filter(b => b.date.startsWith(prefix));
+            }
+            renderCalendar();
+        }
 
         if (currentView === 'table') {
-            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; background:white; font-size:12px; border-radius:10px; overflow:hidden;">
-                <tr style="background:#eee;"><th>作品・情報</th><th style="width:60px">操作</th></tr>
-                ${filtered.map(b => `<tr>
-                    <td style="padding:10px; border-bottom:1px solid #eee;">
-                        <strong>${b.title}</strong><br>
-                        <small>${b.author} | ${b.date} | ${b.genre}</small><br>
-                        <div style="color:#666; margin-top:4px;">${b.comment}</div>
-                    </td>
-                    <td style="text-align:center; border-bottom:1px solid #eee;">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub">編</button>
-                        <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red">消</button>
-                    </td></tr>`).join('')}</table>`;
+            listEl.innerHTML = `
+                <table class="table-view">
+                    <thead><tr><th>作品</th><th>情報</th><th style="width:50px">操作</th></tr></thead>
+                    <tbody>
+                    ${filtered.map(b => `<tr>
+                        <td><img src="${b.img || 'https://via.placeholder.com/40x60?text=No'}" class="table-thumb"></td>
+                        <td>
+                            <strong>${b.title}</strong><br>
+                            <small>${b.author} | ${b.date} | ${b.genre}</small>
+                            <div style="color:#666; margin-top:4px;">${b.comment}</div>
+                        </td>
+                        <td style="text-align:center;">
+                            <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub" style="margin-bottom:4px">編</button>
+                            <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red">消</button>
+                        </td></tr>`).join('')}
+                    </tbody>
+                </table>`;
         } else {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
                 <div class="book-card">
@@ -264,7 +291,7 @@
         }
     }
 
-    // --- Calendar Logic ---
+    // --- カレンダーロジック ---
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         const label = document.getElementById('currentMonthLabel');
@@ -288,7 +315,7 @@
     function filterByDate(d) { filterDate = (filterDate === d) ? null : d; render(); }
     function changeMonth(n) { calDate.setMonth(calDate.getMonth() + n); filterDate = null; render(); }
 
-    // --- Select / Datalist Updates ---
+    // --- ジャンル更新 ---
     function updateGenreFilter() {
         const sel = document.getElementById('genreFilter');
         const current = sel.value;
@@ -301,6 +328,7 @@
         dl.innerHTML = genres.map(g => `<option value="${g}">${g}</option>`).join('');
     }
 
+    // --- エクスポート ---
     function exportToCSV() {
         if (books.length === 0) { alert("データがありません"); return; }
         let csv = "タイトル,著者,日付,ジャンル,コメント\n";
