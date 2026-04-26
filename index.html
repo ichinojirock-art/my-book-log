@@ -36,9 +36,9 @@
 
         .status-msg { font-size: 13px; color: #666; padding: 6px 0; text-align: center; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
-        .calendar-day { background: white; min-height: 60px; padding: 4px 2px; font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .calendar-day { background: white; padding: 3px 1px; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; line-height: 1.3; }
         .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
-        .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; padding: 2px 4px; margin-top: 4px; width: fit-content; }
+        .count-badge { display: block; background: var(--primary); color: white; border-radius: 8px; font-size: 9px; padding: 1px 4px; margin-top: 2px; width: fit-content; }
 
         /* モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
@@ -303,7 +303,13 @@
                 document.getElementById('captureStatus').textContent = '読み取り完了！';
                 showIsbnPopup(result.codeResult.code);
             } else {
-                document.getElementById('captureStatus').textContent = '⚠️ バーコードを検出できませんでした。';
+                // 失敗時：再撮影/終了ボタンを表示
+                document.getElementById('captureStatus').innerHTML = `
+                    <div style="color:#c00; margin-bottom:10px;">⚠️ バーコードを検出できませんでした</div>
+                    <div style="display:flex; gap:8px; justify-content:center;">
+                        <button class="btn btn-main" style="min-height:40px; font-size:13px;" onclick="retryCapture()">📸 再撮影</button>
+                        <button class="btn btn-sub" style="min-height:40px; font-size:13px;" onclick="closeScanner()">✕ 終了</button>
+                    </div>`;
             }
         });
     }
@@ -349,54 +355,57 @@
         document.getElementById('isbnPopup').style.display = 'none';
         showSearchingOverlay(isbn);
 
-        let bookData = null;
-        let lastResponse = null;
-
         try {
-            // ① Open Library API（無制限・APIキー不要）
-            const olRes = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
-            const olJson = await olRes.json();
-            lastResponse = olJson;
-            const olBook = olJson[`ISBN:${isbn}`];
-            if (olBook) {
-                const author = olBook.authors?.[0]?.name || "";
-                const img = olBook.cover?.medium || olBook.cover?.small || "";
-                bookData = { title: olBook.title || "", author, img, isbn };
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
+            const json = await res.json();
+            hideSearchingOverlay();
+
+            // クォータ超過チェック
+            if (json.error && json.error.code === 429) {
+                pendingIsbn = isbn;
+                showQuotaPopup(isbn);
+                return;
             }
-        } catch(e) { /* Open Library失敗時はGoogle Booksへ */ }
 
-        if (!bookData) {
-            try {
-                // ② Google Books API（クォータあり・フォールバック）
-                const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
-                const gJson = await gRes.json();
-                lastResponse = gJson;
-                if (gJson.items?.length > 0) {
-                    const info = gJson.items[0].volumeInfo;
-                    bookData = {
-                        title: info.title || "",
-                        author: info.authors?.[0] || "",
-                        img: info.imageLinks?.thumbnail || "",
-                        isbn
-                    };
-                }
-            } catch(e) { /* 両方失敗 */ }
-        }
-
-        hideSearchingOverlay();
-
-        if (bookData) {
-            pendingIsbn = null;
-            closeScanner();
-            openModal({
-                ...bookData,
-                date: new Date().toISOString().split('T')[0],
-                genre: "", comment: ""
-            }, -1);
-        } else {
+            if (json.items?.length > 0) {
+                const info = json.items[0].volumeInfo;
+                pendingIsbn = null;
+                closeScanner();
+                openModal({
+                    title: info.title || "",
+                    author: info.authors?.[0] || "",
+                    img: info.imageLinks?.thumbnail || "",
+                    isbn,
+                    date: new Date().toISOString().split('T')[0],
+                    genre: "", comment: ""
+                }, -1);
+            } else {
+                pendingIsbn = isbn;
+                showNotFoundPopup(isbn, json);
+            }
+        } catch(e) {
+            hideSearchingOverlay();
             pendingIsbn = isbn;
-            showNotFoundPopup(isbn, lastResponse);
+            showErrorPopup(isbn, e.message);
         }
+    }
+
+    function showQuotaPopup(isbn) {
+        document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
+            <div style="text-align:center; padding:8px 0;">
+                <div style="font-size:32px; margin-bottom:8px;">⏳</div>
+                <div style="font-size:15px; font-weight:bold; margin-bottom:8px;">1日の検索上限に達しました</div>
+                <div style="font-size:13px; color:#555; margin-bottom:16px; line-height:1.6;">
+                    Google Books APIの無料枠（1日1000件）を超えました。<br>
+                    時間を置いて再試行するか、手動で情報を入力してください。
+                </div>
+                <div style="font-size:12px; color:#999; margin-bottom:16px;">ISBN: <span style="font-family:monospace; color:#1a73e8;">${isbn}</span></div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-confirm" style="font-size:14px;" onclick="manualEntryWithIsbn('${isbn}')">✍️ 手動で入力</button>
+                    <button class="btn btn-cancel" onclick="closeIsbnPopup()">閉じる</button>
+                </div>
+            </div>`;
+        document.getElementById('isbnPopup').style.display = 'flex';
     }
 
     function showNotFoundPopup(isbn, debugJson) {
@@ -452,15 +461,19 @@
         if (currentScanMode === 'live') {
             startLiveScanner();
         } else {
-            // 撮影モード：カメラを再起動してビューを戻す
-            document.getElementById('captureResultArea').classList.add('hidden');
-            document.getElementById('captureStatus').textContent = '解析中...';
-            document.getElementById('cameraViewArea').classList.remove('hidden');
-            startPhotoCamera();
+            retryCapture();
         }
     }
 
-    // ========== タイトル検索（Open Library優先、Google Booksフォールバック）==========
+    // 撮影モードで再撮影：プレビューを隠してカメラを再起動
+    function retryCapture() {
+        document.getElementById('captureResultArea').classList.add('hidden');
+        document.getElementById('captureStatus').textContent = '解析中...';
+        document.getElementById('cameraViewArea').classList.remove('hidden');
+        startPhotoCamera();
+    }
+
+    // ========== タイトル検索（Google Books API）==========
     async function searchBooks() {
         const query = document.getElementById('fTitle').value.trim();
         const resArea = document.getElementById('searchResults');
@@ -471,71 +484,49 @@
 
         const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
 
-        // Open Libraryの結果をレンダリング用に統一フォーマットへ変換
-        const normalizeOL = (doc) => ({
-            title: doc.title || "",
-            author: doc.author_name?.[0] || "",
-            img: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : "",
-            isbn: doc.isbn?.[0] || ""
-        });
-
-        // Google Booksの結果を統一フォーマットへ変換
-        const normalizeGB = (item) => {
-            const info = item.volumeInfo;
-            return {
-                title: info.title || "",
-                author: info.authors?.[0] || "",
-                img: info.imageLinks?.thumbnail || "",
-                isbn: info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || ""
-            };
-        };
-
-        const renderItem = (book) => {
-            const safeTitle = book.title.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-            const safeAuthor = book.author.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-            const safeImg = book.img.replace(/'/g, "\\'");
-            return `<div class="search-item" onclick="selectSearchBook('${safeTitle}','${safeAuthor}','${safeImg}','${book.isbn}')">
-                <img src="${book.img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
-                <div><strong>${book.title}</strong><br><small>${book.author}</small></div>
+        const renderItem = (info, isbn) => {
+            const safeTitle = (info.title || "").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+            const safeAuthor = (info.authors?.[0] || "").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+            const img = info.imageLinks?.thumbnail || "";
+            const safeImg = img.replace(/'/g, "\\'");
+            return `<div class="search-item" onclick="selectSearchBook('${safeTitle}','${safeAuthor}','${safeImg}','${isbn}')">
+                <img src="${img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
+                <div><strong>${info.title || ""}</strong><br><small>${info.authors?.[0] || ""}</small></div>
             </div>`;
         };
 
-        const filterByTitle = (books) => books.filter(b => {
-            const normTitle = normalizeText(b.title);
-            return keywords.every(kw => normTitle.includes(kw));
-        });
-
         try {
-            // ① Open Library検索
-            const olRes = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=40&lang=jpn`);
-            const olJson = await olRes.json();
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
+            const json = await res.json();
 
-            let books = (olJson.docs || []).map(normalizeOL);
-            let titleMatched = filterByTitle(books);
-
-            // ② Open Libraryで結果が薄い場合はGoogle Booksも試みる
-            if (titleMatched.length < 3) {
-                try {
-                    const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
-                    const gJson = await gRes.json();
-                    if (gJson.items?.length > 0) {
-                        const gbBooks = gJson.items.map(normalizeGB);
-                        const gbMatched = filterByTitle(gbBooks);
-                        // 重複タイトルを除いてマージ
-                        const existingTitles = new Set(titleMatched.map(b => normalizeText(b.title)));
-                        gbMatched.forEach(b => {
-                            if (!existingTitles.has(normalizeText(b.title))) titleMatched.push(b);
-                        });
-                    }
-                } catch(e) { /* Google Books失敗は無視 */ }
-            }
-
-            if (titleMatched.length === 0) {
-                resArea.innerHTML = "<div style='padding:10px'>タイトルに一致する書籍が見つかりませんでした<br><small style='color:#999'>（APIの検索結果に類似書籍が含まれますが、タイトルが一致しないため除外しています）</small></div>";
+            // クォータ超過チェック
+            if (json.error && json.error.code === 429) {
+                resArea.innerHTML = `<div style='padding:12px; color:#c00;'>
+                    ⏳ 1日の検索上限に達しました。時間を置いて再試行してください。
+                </div>`;
                 return;
             }
 
-            resArea.innerHTML = titleMatched.slice(0, 15).map(renderItem).join('');
+            if (!json.items || json.items.length === 0) {
+                resArea.innerHTML = "<div style='padding:10px'>見つかりませんでした</div>";
+                return;
+            }
+
+            const titleMatched = json.items.filter(item => {
+                const normTitle = normalizeText(item.volumeInfo.title);
+                return keywords.every(kw => normTitle.includes(kw));
+            });
+
+            if (titleMatched.length === 0) {
+                resArea.innerHTML = "<div style='padding:10px'>タイトルに一致する書籍が見つかりませんでした<br><small style='color:#999'>（類似書籍はありますがタイトルが一致しないため除外しています）</small></div>";
+                return;
+            }
+
+            resArea.innerHTML = titleMatched.slice(0, 15).map(item => {
+                const isbn = item.volumeInfo.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
+                return renderItem(item.volumeInfo, isbn);
+            }).join('');
+
         } catch(e) {
             resArea.innerHTML = "<div style='padding:10px'>エラーが発生しました</div>";
         }
@@ -608,10 +599,16 @@
         if (currentView === 'table') {
             listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:13px; background:white; border-radius:12px; overflow:hidden;">
                 ${filtered.map(b => `<tr style="border-bottom:1px solid #eee">
-                    <td style="padding:10px 5px"><img src="${b.img || 'https://via.placeholder.com/40x60'}" style="width:45px; border-radius:4px;"></td>
-                    <td style="padding:10px 5px"><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
-                    <td style="text-align:right; padding:10px 5px">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sub" style="padding:4px 8px; min-height:30px; font-size:12px;">編集</button>
+                    <td style="padding:8px 5px; width:50px;"><img src="${b.img || 'https://via.placeholder.com/40x60'}" style="width:45px; border-radius:4px;" onerror="this.src='https://via.placeholder.com/40x60'"></td>
+                    <td style="padding:8px 5px;">
+                        <strong>${b.title}</strong><br>
+                        <small style="color:#666;">${b.author} | ${b.date}</small><br>
+                        <small style="color:#888;">📁 ${b.genre || '未分類'}</small>
+                        ${b.comment ? `<div style="font-size:11px; color:#555; margin-top:3px; font-style:italic;">💬 ${b.comment}</div>` : ''}
+                    </td>
+                    <td style="text-align:right; padding:8px 5px; white-space:nowrap; vertical-align:top;">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sub" style="padding:4px 8px; min-height:30px; font-size:12px; border:1px solid var(--primary); border-radius:6px; cursor:pointer; display:block; margin-bottom:4px; width:44px;">編集</button>
+                        <button onclick="deleteBook(${b.originalIndex})" style="padding:4px 8px; min-height:30px; font-size:12px; border:1px solid #dc3545; color:#dc3545; background:white; border-radius:6px; cursor:pointer; display:block; width:44px;">削除</button>
                     </td></tr>`).join('')}</table>`;
         } else if (currentView !== 'calendar' || true) {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
