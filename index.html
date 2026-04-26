@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Book Log</title>
+    <title>ホンログ</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
@@ -72,7 +73,7 @@
 <body>
 
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <h1 style="margin:0;">📚 My Book Log</h1>
+        <h1 style="margin:0; font-size:20px;">📚 ホンログ <span style="font-size:12px; font-weight:normal; color:#888;">My Book Log</span></h1>
         <button onclick="document.getElementById('helpModal').style.display='flex'"
                 style="background:none; border:2px solid #1a73e8; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; color:#1a73e8; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
                 title="使い方・注意事項">❓</button>
@@ -88,6 +89,10 @@
             </div>
 
             <div style="font-size:13px; line-height:1.8; color:#333;">
+
+                <p style="margin:0 0 16px; padding:12px 14px; background:#e8f0fe; border-radius:10px; border-left:3px solid #1a73e8;">
+                <strong>📚 ホンログとは</strong><br>
+                読んだ本をかんたんに記録・管理するための個人向けWebツールです。バーコードスキャンやタイトル検索で書籍情報を自動取得し、読了日・ジャンル・コメントとあわせて保存できます。カード・表・カレンダーの3種類の表示で記録を振り返ることができます。</p>
 
                 <p style="margin:0 0 14px;"><strong>🔍 書籍検索について</strong><br>
                 書籍情報の検索には <strong>Google Books API</strong> を使用しています。無料で利用できますが、<strong>1日あたりの検索回数に上限</strong>があります。上限に達した場合はしばらく時間をおいてから再試行してください。上限は翌日にリセットされます。</p>
@@ -201,9 +206,33 @@
             <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(1)">▶</button>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
+        <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between; min-height:36px;">
+            <span id="calFilterLabel" style="font-size:12px; color:#888;"></span>
+            <button id="shareBtn" class="hidden" style="background:#1a73e8; color:white; border:none; border-radius:8px; padding:6px 14px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="openShareModal()">📷 画像として保存</button>
+        </div>
     </div>
 
     <div id="listDisplay"></div>
+
+    <!-- シェア用画像生成モーダル -->
+    <div id="shareModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal-content" style="max-width:360px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0;">📷 画像として保存</h3>
+                <button onclick="document.getElementById('shareModal').style.display='none'"
+                        style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+            </div>
+            <div style="font-size:13px; color:#555; margin-bottom:16px;" id="shareModalLabel"></div>
+            <div style="display:flex; gap:10px; margin-bottom:12px;">
+                <button class="btn btn-main" onclick="generateShareImage(true)">🖼️ 書影あり</button>
+                <button class="btn btn-sub" onclick="generateShareImage(false)">📋 書影なし</button>
+            </div>
+            <div id="shareProgress" style="display:none; text-align:center; color:#888; font-size:13px; padding:10px;">生成中...</div>
+        </div>
+    </div>
+
+    <!-- シェア画像描画用の隠しコンテナ -->
+    <div id="shareCanvas" style="position:fixed; left:-9999px; top:0; background:white;"></div>
 
     <!-- ISBN確認ポップアップ -->
     <div id="isbnPopup" class="modal">
@@ -694,18 +723,37 @@
         if (gFilter !== 'all') filtered = filtered.filter(b => b.genre === gFilter);
 
         calArea.classList.toggle('hidden', currentView !== 'calendar');
+
+        // カレンダーモードのフィルタラベル・シェアボタン制御
         if (currentView === 'calendar') {
             const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
             renderCalendar();
-            filtered = filterDate ? filtered.filter(b => b.date === filterDate) : filtered.filter(b => b.date.startsWith(prefix));
+            filtered = filterDate
+                ? filtered.filter(b => b.date === filterDate)
+                : filtered.filter(b => b.date.startsWith(prefix));
+
+            const label = filterDate
+                ? `${filterDate} の記録（${filtered.length}冊）`
+                : `${calDate.getFullYear()}年${calDate.getMonth()+1}月 の記録（${filtered.length}冊）`;
+            document.getElementById('calFilterLabel').textContent = filtered.length > 0 ? label : '';
+            document.getElementById('shareBtn').classList.toggle('hidden', filtered.length === 0);
         }
+
+        const gbLink = (b) => b.isbn
+            ? `https://www.google.com/search?q=${encodeURIComponent(b.title)}&tbm=bks`
+            : '';
 
         if (currentView === 'table') {
             listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:13px; background:white; border-radius:12px; overflow:hidden;">
-                ${filtered.map(b => `<tr style="border-bottom:1px solid #eee">
+                ${filtered.map(b => {
+                    const link = gbLink(b);
+                    const titleHtml = link
+                        ? `<a href="${link}" target="_blank" rel="noopener" style="color:#1a73e8; text-decoration:none; font-weight:bold;">${b.title}</a>`
+                        : `<strong>${b.title}</strong>`;
+                    return `<tr style="border-bottom:1px solid #eee">
                     <td style="padding:8px 5px; width:50px;"><img src="${b.img || NO_IMAGE_SRC_SMALL}" style="width:45px; height:60px; object-fit:cover; border-radius:4px;" onerror="this.src=NO_IMAGE_SRC_SMALL"></td>
                     <td style="padding:8px 5px;">
-                        <strong>${b.title}</strong><br>
+                        ${titleHtml}<br>
                         <small style="color:#666;">${b.author} | ${b.date}</small><br>
                         <small style="color:#888;">📁 ${b.genre || '未分類'}</small>
                         ${b.comment ? `<div style="font-size:11px; color:#555; margin-top:3px; font-style:italic;">💬 ${b.comment}</div>` : ''}
@@ -713,13 +761,18 @@
                     <td style="text-align:right; padding:8px 5px; white-space:nowrap; vertical-align:top;">
                         <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sub" style="padding:4px 8px; min-height:30px; font-size:12px; border:1px solid var(--primary); border-radius:6px; cursor:pointer; display:block; margin-bottom:4px; width:44px;">編集</button>
                         <button onclick="deleteBook(${b.originalIndex})" style="padding:4px 8px; min-height:30px; font-size:12px; border:1px solid #dc3545; color:#dc3545; background:white; border-radius:6px; cursor:pointer; display:block; width:44px;">削除</button>
-                    </td></tr>`).join('')}</table>`;
+                    </td></tr>`;
+                }).join('')}</table>`;
         } else if (currentView !== 'calendar' || true) {
-            listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
-                <div class="book-card">
+            listEl.innerHTML = `<div class="book-grid">${filtered.map(b => {
+                const link = gbLink(b);
+                const titleHtml = link
+                    ? `<a href="${link}" target="_blank" rel="noopener" style="color:#222; text-decoration:none; font-weight:bold;">${b.title}</a>`
+                    : `<strong>${b.title}</strong>`;
+                return `<div class="book-card">
                     <img src="${b.img || NO_IMAGE_SRC}" style="width:100%; aspect-ratio:3/4; object-fit:cover; border-radius:8px; margin-bottom:8px;" onerror="this.src=NO_IMAGE_SRC">
                     <div class="book-info">
-                        <strong>${b.title}</strong><br><small>${b.author}</small>
+                        ${titleHtml}<br><small>${b.author}</small>
                         <div class="book-meta">${b.date}</div>
                         <div class="book-meta">📁 ${b.genre || '未分類'}</div>
                         ${b.comment ? `<div class="book-comment">💬 ${b.comment}</div>` : ''}
@@ -728,7 +781,8 @@
                         <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub" style="min-height:36px; font-size:12px;">編集</button>
                         <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub" style="min-height:36px; font-size:12px; color:red; border-color:red;">削除</button>
                     </div>
-                </div>`).join('')}</div>`;
+                </div>`;
+            }).join('')}</div>`;
         }
         updateGenreFilter();
     }
