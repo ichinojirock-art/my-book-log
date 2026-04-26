@@ -5,105 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ホンログ</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
         .hidden { display: none !important; }
-        .btn { padding: 10px 5px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 48px; }
+        .btn { padding: 8px 5px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 40px; }
         .btn-main { background: var(--primary); color: white; }
         .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); }
-        .btn-export { border-color: var(--success); color: var(--success); }
-        .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .btn-danger { background: white; color: var(--danger); border: 1px solid var(--danger); }
+        .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; }
         #scannerArea { background: black; border-radius: 12px; overflow: hidden; margin-bottom: 15px; position: relative; }
         #interactive { width: 100%; }
         #interactive video { width: 100%; display: block; }
-        #interactive canvas { display: none; }
-        .scan-mode-bar { display: flex; gap: 6px; margin-bottom: 10px; padding: 10px; }
-        .scan-mode-btn { flex: 1; padding: 8px; border: 1px solid var(--primary); border-radius: 8px; background: white; color: var(--primary); font-weight: bold; font-size: 13px; cursor: pointer; }
-        .scan-mode-btn.active { background: var(--primary); color: white; }
-        #captureBtn { width: 64px; height: 64px; border-radius: 50%; background: white; border: 4px solid var(--primary); position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 10; }
-        .status-msg { font-size: 13px; color: #666; padding: 6px 0; text-align: center; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
-        .calendar-day { background: white; height: 38px; padding: 3px 1px; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; line-height: 1.3; box-sizing: border-box; }
-        .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
-        .count-badge { display: block; background: var(--primary); color: white; border-radius: 8px; font-size: 9px; padding: 1px 4px; margin-top: 2px; width: fit-content; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; }
+        .calendar-day { background: white; height: 45px; padding: 2px; font-size: 11px; text-align: center; cursor: pointer; position: relative; }
+        .calendar-day.active { background: #e8f0fe; box-shadow: inset 0 0 0 2px var(--primary); }
+        .count-badge { background: var(--primary); color: white; border-radius: 10px; font-size: 9px; padding: 1px 4px; position: absolute; bottom: 2px; right: 2px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; width: 92%; max-width: 400px; border-radius: 16px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
-        .modal-footer { display: flex; gap: 12px; margin-top: 20px; }
-        .btn-confirm { background: var(--success); color: white; min-height: 54px; flex: 1; }
-        .btn-cancel { background: var(--danger); color: white; min-height: 54px; flex: 1; }
-        input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
-        .search-box { display: flex; gap: 8px; align-items: flex-start; }
-        .btn-search { background: #5f6368; color: white; flex: none; width: 70px; height: 44px; margin-top: 8px; border-radius: 8px; border: none; font-weight: bold; }
-        .search-results { background: #ffffff; border-radius: 8px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; display: none; border: 2px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 13px; }
-        .search-item img { width: 40px; height: auto; border-radius: 2px; }
+        .modal-content { background: white; padding: 20px; width: 92%; max-width: 400px; border-radius: 16px; max-height: 90vh; overflow-y: auto; }
         .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-        .book-card { background: white; padding: 12px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .book-card { background: white; padding: 12px; border-radius: 12px; border: 1px solid #eee; display: flex; flex-direction: column; }
         .book-card img { width: 100%; border-radius: 8px; margin-bottom: 8px; }
         .book-info { font-size: 13px; line-height: 1.4; flex-grow: 1; }
-        .book-meta { font-size: 11px; color: #666; margin: 4px 0; }
-        .book-comment { font-size: 12px; color: #444; border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; font-style: italic; }
-        .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .book-meta { font-size: 11px; color: #666; margin-top: 4px; }
+        .book-comment { font-size: 12px; color: #444; border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; font-style: italic; }
+        .card-actions { display: flex; gap: 4px; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
+        th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+        input, textarea, select { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
         <h1 style="margin:0; font-size:20px;">📚 ホンログ</h1>
-        <button onclick="document.getElementById('helpModal').style.display='flex'" style="background:none; border:1.5px solid #1a73e8; border-radius:50%; width:26px; height:26px; font-size:13px; color:#1a73e8;">?</button>
-    </div>
-
-    <div id="helpModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content" style="font-size:13px; line-height:1.6;">
-            <h2 style="margin-top:0;">使い方</h2>
-            <p>・カメラや検索で本を登録できます。<br>・データはこのブラウザにのみ保存されます。<br>・CSVでバックアップが可能です。</p>
-            <button class="btn btn-sub" onclick="document.getElementById('helpModal').style.display='none'">閉じる</button>
-        </div>
+        <button class="btn btn-sub btn-export" style="flex:none; width:80px;" onclick="document.getElementById('csvModal').style.display='flex'">📊 CSV</button>
     </div>
 
     <div class="main-action-grid">
         <button id="scanToggleBtn" class="btn btn-main" onclick="toggleScanner()">📷 スキャン</button>
         <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
-        <button class="btn btn-sub btn-export" onclick="document.getElementById('csvModal').style.display='flex'">📊 CSV</button>
-    </div>
-
-    <div id="csvModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content">
-            <h3 style="margin-top:0;">📊 CSV</h3>
-            <button class="btn btn-main" style="width:100%; margin-bottom:15px;" onclick="exportToCSV(); document.getElementById('csvModal').style.display='none'">📤 書き出し (ダウンロード)</button>
-            <label style="display:block; background:var(--bg); border:2px dashed #ccc; padding:20px; text-align:center; cursor:pointer; border-radius:10px;">
-                📥 読み込み (ファイルを選択)
-                <input type="file" accept=".csv" style="display:none;" onchange="importFromCSV(event)">
-            </label>
-            <div id="importResult" style="margin-top:10px; font-size:12px;"></div>
-        </div>
     </div>
 
     <div id="scannerArea" class="hidden">
-        <div class="scan-mode-bar">
-            <button id="modeLiveBtn" class="scan-mode-btn active" onclick="setScanMode('live')">🎥 リアルタイム</button>
-            <button id="modePhotoBtn" class="scan-mode-btn" onclick="setScanMode('photo')">📸 撮影して読取</button>
-        </div>
-        <div id="liveMode">
-            <div id="interactive"></div>
-            <p class="status-msg" id="liveScanStatus">バーコードをカメラに向けてください</p>
-        </div>
-        <div id="photoMode" class="hidden">
-            <div id="cameraViewArea" style="position:relative; min-height:200px;">
-                <video id="photoVideo" style="width:100%;" autoplay playsinline></video>
-                <button id="captureBtn" onclick="capturePhoto()">📸</button>
-            </div>
-            <canvas id="captureCanvas" style="display:none;"></canvas>
-            <div id="captureResultArea" class="hidden">
-                <img id="capturePreview" style="width:100%; border-radius:10px;">
-                <p class="status-msg" id="captureStatus">解析中...</p>
-            </div>
-        </div>
+        <div id="interactive"></div>
+        <p style="color:white; text-align:center; font-size:12px; padding:10px;">バーコードを枠に合わせてください</p>
     </div>
 
-    <div class="card">
+    <div style="background:white; padding:10px; border-radius:12px; margin-bottom:15px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
         <div style="display: flex; gap: 8px; margin-bottom: 10px;">
             <button class="btn btn-sub" onclick="setView('card')">カード</button>
             <button class="btn btn-sub" onclick="setView('table')">表</button>
@@ -112,65 +61,60 @@
         <select id="genreFilter" onchange="render()"><option value="all">すべてのジャンル</option></select>
     </div>
 
-    <div id="calendarArea" class="card hidden">
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(-1)">◀</button>
+    <div id="calendarArea" class="hidden" style="margin-bottom:15px;">
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button onclick="changeMonth(-1)">◀</button>
             <span id="currentMonthLabel" style="font-weight:bold;"></span>
-            <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(1)">▶</button>
+            <button onclick="changeMonth(1)">▶</button>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
-        <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
-            <span id="calFilterLabel" style="font-size:12px; color:#888;"></span>
-            <button id="shareBtn" class="hidden" style="background:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 12px; font-weight:bold;" onclick="openShareModal()">📷 画像として保存</button>
-        </div>
+        <button id="shareBtn" class="btn btn-main" style="margin-top:10px;" onclick="openShareModal()">📷 画像として保存</button>
     </div>
 
     <div id="listDisplay"></div>
 
-    <div id="shareModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content">
-            <h3 style="margin:0 0 10px;">📷 画像として保存</h3>
-            <div id="shareSelectArea" style="display:flex; gap:10px; margin-bottom:12px;">
-                <button class="btn btn-main" onclick="generateShareImage(true)">🖼️ 書影あり</button>
-                <button class="btn btn-sub" onclick="generateShareImage(false)">📋 リストのみ</button>
-            </div>
-            <div id="shareProgress" style="display:none; text-align:center;">生成中...</div>
-            <div id="sharePreviewArea" style="display:none;">
-                <img id="sharePreviewImg" style="width:100%; border-radius:8px; border:1px solid #eee;">
-                <a id="shareDownloadLink" download style="display:block; margin-top:10px;">
-                    <button class="btn btn-main" style="width:100%;">⬇️ 保存する</button>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div id="isbnPopup" class="modal">
-        <div class="modal-content" style="text-align:center;">
-            <div style="font-size:14px; color:#555;">読み取ったISBN</div>
-            <div id="isbnDisplay" style="font-size:24px; font-weight:bold; color:#1a73e8; margin:10px 0;"></div>
-            <div class="modal-footer">
-                <button class="btn btn-confirm" onclick="searchByConfirmedIsbn()">🔍 検索</button>
-                <button class="btn btn-cancel" onclick="closeIsbnPopup()">戻る</button>
-            </div>
-        </div>
-    </div>
-
     <div id="editModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">書籍登録</h3>
-            <div class="search-box">
-                <input type="text" id="fTitle" placeholder="タイトル検索...">
-                <button class="btn btn-search" onclick="searchBooks()">検索</button>
+            <h3 id="modalTitle">書籍登録</h3>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="fTitle" placeholder="タイトルを入力または検索...">
+                <button class="btn btn-main" style="flex:none; width:60px;" onclick="searchBooks()">検索</button>
             </div>
-            <div id="searchResults" class="search-results"></div>
+            <div id="searchResults" style="display:none; border:1px solid #ccc; max-height:150px; overflow-y:auto; margin-bottom:10px;"></div>
             <label>著者</label><input type="text" id="fAuthor">
             <label>日付</label><input type="date" id="fDate">
             <label>ジャンル</label><input type="text" id="fGenre" list="genreOptions"><datalist id="genreOptions"></datalist>
             <label>コメント</label><textarea id="fComment" rows="2"></textarea>
             <input type="hidden" id="fIsbn">
-            <div class="modal-footer">
-                <button class="btn btn-confirm" onclick="saveData()">保存</button>
-                <button class="btn btn-cancel" onclick="closeModal()">中止</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-main" onclick="saveData()">保存</button>
+                <button class="btn btn-sub" onclick="closeModal()">中止</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="csvModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal-content">
+            <h3>📊 CSV連携</h3>
+            <button class="btn btn-main" style="width:100%; margin-bottom:15px;" onclick="exportToCSV()">📤 CSV書き出し</button>
+            <label style="display:block; border:2px dashed #ccc; padding:20px; text-align:center;">
+                📥 CSV読み込み
+                <input type="file" accept=".csv" style="display:none;" onchange="importFromCSV(event)">
+            </label>
+        </div>
+    </div>
+
+    <div id="shareModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal-content">
+            <h3>📷 保存形式を選択</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-main" onclick="generateShareImage(true)">🖼️ 書影あり</button>
+                <button class="btn btn-sub" onclick="generateShareImage(false)">📋 リストのみ</button>
+            </div>
+            <div id="shareProgress" style="display:none; margin-top:15px; text-align:center;">生成中...</div>
+            <div id="sharePreviewArea" class="hidden" style="margin-top:15px;">
+                <img id="sharePreviewImg" style="width:100%; border:1px solid #eee;">
+                <a id="shareDownloadLink" download="honlog_share.png"><button class="btn btn-main" style="width:100%; margin-top:10px;">⬇️ 画像を保存</button></a>
             </div>
         </div>
     </div>
@@ -183,161 +127,44 @@
     let calDate = new Date();
     let filterDate = null;
 
-    const NO_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="200" viewBox="0 0 150 200"><rect width="150" height="200" fill="#ddd"/><text x="75" y="105" font-family="sans-serif" font-size="14" fill="#888" text-anchor="middle">NO IMAGE</text></svg>`;
-    const NO_IMAGE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(NO_IMAGE_SVG);
+    const NO_IMAGE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="140"><rect width="100" height="140" fill="#ddd"/><text x="50" y="75" font-family="sans-serif" font-size="10" fill="#888" text-anchor="middle">NO IMAGE</text></svg>`);
 
-    let scannerOpen = false;
-    let currentScanMode = 'live'; 
-    let liveQuaggaRunning = false;
-    let photoStream = null;
-    let pendingIsbn = null;
-
-    function normalizeText(text) { return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?・]/g, ""); }
-
-    // ISBNがない場合はリンクを生成しないように修正
     function getBookLink(b) {
-        if (b.isbn && b.isbn.trim() !== "") {
-            return `https://www.google.com/search?q=isbn:${b.isbn}&tbm=bks`;
-        }
-        return null;
-    }
-
-    // CORS回避のためのプロキシ（画像保存エラー解消用）
-    function getSafeProxyImg(url) {
-        if (!url) return "";
-        return `https://api.allorigins.win/raw?url=${encodeURIComponent(url.replace('http://', 'https://'))}`;
+        return (b.isbn && b.isbn.length > 5) ? `https://www.google.com/search?q=isbn:${b.isbn}&tbm=bks` : null;
     }
 
     function toggleScanner() {
-        if (!scannerOpen) {
-            scannerOpen = true;
-            document.getElementById('scannerArea').classList.remove('hidden');
-            document.getElementById('scanToggleBtn').innerText = "⏹ 停止";
-            setScanMode(currentScanMode);
+        const area = document.getElementById('scannerArea');
+        if (area.classList.contains('hidden')) {
+            area.classList.remove('hidden');
+            Quagga.init({ inputStream: { name: "Live", type: "LiveStream", target: "#interactive", constraints: { facingMode: "environment" } }, decoder: { readers: ["ean_reader"] } }, (err) => {
+                if(!err) Quagga.start();
+            });
         } else {
-            closeScanner();
+            Quagga.stop();
+            area.classList.add('hidden');
         }
-    }
-
-    function stopAllScanning() {
-        if (liveQuaggaRunning) { try { Quagga.stop(); } catch(e){} liveQuaggaRunning = false; }
-        if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
-    }
-
-    function closeScanner() {
-        stopAllScanning();
-        document.getElementById('scannerArea').classList.add('hidden');
-        document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
-        scannerOpen = false;
-    }
-
-    function setScanMode(mode) {
-        currentScanMode = mode;
-        stopAllScanning();
-        document.getElementById('modeLiveBtn').classList.toggle('active', mode === 'live');
-        document.getElementById('modePhotoBtn').classList.toggle('active', mode === 'photo');
-        document.getElementById('liveMode').classList.toggle('hidden', mode !== 'live');
-        document.getElementById('photoMode').classList.toggle('hidden', mode !== 'photo');
-        if (mode === 'live') startLiveScanner(); else startPhotoCamera();
-    }
-
-    function startLiveScanner() {
-        const el = document.getElementById('interactive');
-        el.innerHTML = '';
-        Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: el, constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader"] }
-        }, (err) => {
-            if (err) return;
-            Quagga.start(); liveQuaggaRunning = true;
-        });
     }
 
     Quagga.onDetected((data) => {
-        if (!liveQuaggaRunning) return;
         const code = data.codeResult.code;
         if (code && code.startsWith('978')) {
-            liveQuaggaRunning = false; Quagga.stop();
-            showIsbnPopup(code);
+            Quagga.stop();
+            document.getElementById('scannerArea').classList.add('hidden');
+            autoSearchByIsbn(code);
         }
     });
 
-    async function startPhotoCamera() {
-        try {
-            photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('photoVideo').srcObject = photoStream;
-        } catch(e) {}
-    }
-
-    function capturePhoto() {
-        const video = document.getElementById('photoVideo');
-        const canvas = document.getElementById('captureCanvas');
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        document.getElementById('cameraViewArea').classList.add('hidden');
-        document.getElementById('capturePreview').src = dataUrl;
-        document.getElementById('captureResultArea').classList.remove('hidden');
-        Quagga.decodeSingle({ decoder: { readers: ["ean_reader"] }, src: dataUrl }, (res) => {
-            if (res?.codeResult?.code.startsWith('978')) showIsbnPopup(res.codeResult.code);
-            else document.getElementById('captureStatus').innerText = '読み取れませんでした';
-        });
-    }
-
-    function showIsbnPopup(isbn) {
-        pendingIsbn = isbn;
-        document.getElementById('isbnDisplay').innerText = isbn;
-        document.getElementById('isbnPopup').style.display = 'flex';
-    }
-
-    function closeIsbnPopup() {
-        document.getElementById('isbnPopup').style.display = 'none';
-        if (scannerOpen) setScanMode(currentScanMode);
-    }
-
-    async function searchByConfirmedIsbn() {
-        const isbn = pendingIsbn;
-        document.getElementById('isbnPopup').style.display = 'none';
+    async function autoSearchByIsbn(isbn) {
         try {
             const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
             const json = await res.json();
-            if (json.items?.length > 0) {
+            if (json.items) {
                 const info = json.items[0].volumeInfo;
-                closeScanner();
                 openModal({ title: info.title, author: info.authors?.[0]||"", img: info.imageLinks?.thumbnail||"", isbn, date: new Date().toISOString().split('T')[0], genre: "", comment: "" }, -1);
-            } else { alert("見つかりませんでした"); }
-        } catch(e) { alert("エラーが発生しました"); }
+            }
+        } catch(e) { alert("書籍情報が見つかりませんでした"); }
     }
-
-    async function searchBooks() {
-        const query = document.getElementById('fTitle').value;
-        const resArea = document.getElementById('searchResults');
-        if (!query) return;
-        resArea.innerHTML = "検索中..."; resArea.style.display = "block";
-        try {
-            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`);
-            const json = await res.json();
-            resArea.innerHTML = (json.items || []).map(item => {
-                const info = item.volumeInfo;
-                const isbn = info.industryIdentifiers?.find(id => id.type.includes("ISBN"))?.identifier || "";
-                const img = info.imageLinks?.thumbnail || "";
-                return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/'/g,"")}', '${(info.authors?.[0]||"").replace(/'/g,"")}', '${img}', '${isbn}')">
-                    <img src="${img || NO_IMAGE_SRC}">
-                    <div><strong>${info.title}</strong><br><small>${info.authors?.[0]||""}</small></div>
-                </div>`;
-            }).join('') || "見つかりません";
-        } catch(e) { resArea.innerHTML = "エラー"; }
-    }
-
-    function selectSearchBook(t, a, i, isbn) {
-        document.getElementById('fTitle').value = t;
-        document.getElementById('fAuthor').value = a;
-        document.getElementById('fIsbn').value = isbn;
-        document.getElementById('editModal').dataset.img = i;
-        document.getElementById('searchResults').style.display = "none";
-    }
-
-    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"", isbn:"" }, -1); }
 
     function openModal(data, index) {
         editingIndex = index;
@@ -347,12 +174,13 @@
         document.getElementById('fGenre').value = data.genre;
         document.getElementById('fComment').value = data.comment;
         document.getElementById('fIsbn').value = data.isbn || "";
-        document.getElementById('editModal').dataset.img = data.img;
+        document.getElementById('editModal').dataset.img = data.img || "";
         document.getElementById('editModal').style.display = 'flex';
         document.getElementById('genreOptions').innerHTML = genres.map(g => `<option value="${g}">`).join('');
     }
 
     function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+    function openManualEntry() { openModal({title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"", isbn:""}, -1); }
 
     function saveData() {
         const genre = document.getElementById('fGenre').value || "未分類";
@@ -373,7 +201,11 @@
     }
 
     function deleteBook(idx) {
-        if (confirm("削除しますか？")) { books.splice(idx, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); }
+        if(confirm("このデータを削除してもよろしいですか？")) {
+            books.splice(idx, 1);
+            localStorage.setItem('myBooks', JSON.stringify(books));
+            render();
+        }
     }
 
     function setView(v) { currentView = v; filterDate = null; render(); }
@@ -387,42 +219,49 @@
         if (gFilter !== 'all') filtered = filtered.filter(b => b.genre === gFilter);
 
         calArea.classList.toggle('hidden', currentView !== 'calendar');
-
         if (currentView === 'calendar') {
             renderCalendar();
             const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
             filtered = filterDate ? filtered.filter(b => b.date === filterDate) : filtered.filter(b => b.date.startsWith(prefix));
-            document.getElementById('shareBtn').classList.toggle('hidden', filtered.length === 0);
         }
 
         if (currentView === 'table') {
-            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; background:white; font-size:13px;">${filtered.map(b => {
+            listEl.innerHTML = `<table><thead><tr><th>書影</th><th>情報</th><th>操作</th></tr></thead><tbody>${filtered.map(b => {
                 const link = getBookLink(b);
-                const titleHtml = link ? `<a href="${link}" target="_blank" style="color:var(--primary); font-weight:bold; text-decoration:none;">${b.title}</a>` : `<span style="font-weight:bold;">${b.title}</span>`;
-                return `<tr style="border-bottom:1px solid #eee">
-                    <td style="padding:8px;"><img src="${b.img || NO_IMAGE_SRC}" style="width:40px; height:55px; object-fit:cover;"></td>
-                    <td style="padding:8px;">${titleHtml}<br><small>${b.author}</small></td>
-                    <td style="padding:8px; text-align:right;">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" style="border:1px solid var(--primary); background:none; padding:4px; border-radius:4px;">編集</button>
-                    </td>
+                const titlePart = link ? `<a href="${link}" target="_blank" style="color:var(--primary); font-weight:bold;">${b.title}</a>` : `<b>${b.title}</b>`;
+                return `<tr>
+                    <td><img src="${b.img || NO_IMAGE_SRC}" style="width:40px;"></td>
+                    <td>${titlePart}<br><small>${b.author}</small><br><span style="font-size:10px; color:#666;">${b.date} / ${b.genre}</span><br><span style="font-size:11px;">${b.comment}</span></td>
+                    <td><div style="display:flex; flex-direction:column; gap:4px;">
+                        <button class="btn btn-sub" style="min-height:30px;" onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})">編集</button>
+                        <button class="btn btn-danger" style="min-height:30px;" onclick="deleteBook(${b.originalIndex})">削除</button>
+                    </div></td>
                 </tr>`;
-            }).join('')}</table>`;
+            }).join('')}</tbody></table>`;
         } else {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => {
                 const link = getBookLink(b);
-                const imgHtml = link ? `<a href="${link}" target="_blank"><img src="${b.img || NO_IMAGE_SRC}"></a>` : `<img src="${b.img || NO_IMAGE_SRC}">`;
-                const titleHtml = link ? `<a href="${link}" target="_blank" style="color:#222; text-decoration:none; font-weight:bold;">${b.title}</a>` : `<span style="font-weight:bold;">${b.title}</span>`;
+                const imgTag = `<img src="${b.img || NO_IMAGE_SRC}">`;
                 return `<div class="book-card">
-                    ${imgHtml}
-                    <div class="book-info">${titleHtml}<br><small>${b.author}</small><div class="book-meta">${b.date}</div></div>
-                    <button class="btn btn-sub" style="min-height:30px; font-size:12px; margin-top:5px;" onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})">編集</button>
+                    ${link ? `<a href="${link}" target="_blank">${imgTag}</a>` : imgTag}
+                    <div class="book-info">
+                        ${link ? `<a href="${link}" target="_blank" style="color:#333; text-decoration:none;"><b>${b.title}</b></a>` : `<b>${b.title}</b>`}<br>
+                        <small>${b.author}</small>
+                        <div class="book-meta">${b.date} | ${b.genre}</div>
+                        ${b.comment ? `<div class="book-comment">${b.comment}</div>` : ''}
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-sub" onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})">編集</button>
+                        <button class="btn btn-danger" onclick="deleteBook(${b.originalIndex})">削除</button>
+                    </div>
                 </div>`;
             }).join('')}</div>`;
         }
-        const sel = document.getElementById('genreFilter');
-        const cur = sel.value;
-        sel.innerHTML = `<option value="all">すべてのジャンル</option>` + genres.map(g => `<option value="${g}">${g}</option>`).join('');
-        sel.value = cur;
+
+        // フィルタ用セレクトボックス更新
+        const cur = document.getElementById('genreFilter').value;
+        document.getElementById('genreFilter').innerHTML = `<option value="all">すべてのジャンル</option>` + genres.map(g => `<option value="${g}">${g}</option>`).join('');
+        document.getElementById('genreFilter').value = cur;
     }
 
     function renderCalendar() {
@@ -441,39 +280,11 @@
     function filterByDate(d) { filterDate = filterDate === d ? null : d; render(); }
     function changeMonth(n) { calDate.setMonth(calDate.getMonth() + n); filterDate = null; render(); }
 
-    function exportToCSV() {
-        let csv = "タイトル,著者,日付,ジャンル,コメント,ISBN,書影URL\n";
-        books.forEach(b => csv += `"${b.title}","${b.author}","${b.date}","${b.genre}","${b.comment}","${b.isbn}","${b.img}"\n`);
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv" });
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "honlog.csv"; a.click();
-    }
-
-    function importFromCSV(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (f) => {
-            const rows = f.target.result.split('\n').slice(1);
-            rows.forEach(row => {
-                const c = row.split('","').map(v => v.replace(/"/g, ""));
-                if (c.length >= 7) books.push({title:c[0], author:c[1], date:c[2], genre:c[3], comment:c[4], isbn:c[5], img:c[6]});
-            });
-            localStorage.setItem('myBooks', JSON.stringify(books)); render();
-        };
-        reader.readAsText(file);
-    }
-
-    function openShareModal() {
-        document.getElementById('shareSelectArea').style.display = 'flex';
-        document.getElementById('sharePreviewArea').style.display = 'none';
-        document.getElementById('shareModal').style.display = 'flex';
-    }
-
     async function generateShareImage(withCover) {
-        const area = document.getElementById('shareProgress');
-        area.style.display = 'block';
-        document.getElementById('shareSelectArea').style.display = 'none';
-        
-        // カレンダー表示条件に合わせたリスト抽出
+        const progress = document.getElementById('shareProgress');
+        const preview = document.getElementById('sharePreviewArea');
+        progress.style.display = 'block'; preview.classList.add('hidden');
+
         const gFilter = document.getElementById('genreFilter').value;
         const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
         let target = books.filter(b => b.date.startsWith(prefix));
@@ -483,43 +294,63 @@
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const W = 800;
-        const rows = Math.ceil(target.length / 3);
-        const H = withCover ? (rows * 300 + 100) : (target.length * 50 + 100);
+        const H = withCover ? (Math.ceil(target.length / 3) * 320 + 120) : (target.length * 70 + 120);
         canvas.width = W; canvas.height = H;
 
-        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle = "#1a73e8"; ctx.font = "bold 30px sans-serif";
-        ctx.fillText("📚 読書記録", 30, 60);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle = "#1a73e8"; ctx.font = "bold 32px sans-serif";
+        ctx.fillText(`📚 読書ログ (${prefix}${filterDate?'-'+filterDate.split('-')[2]:''})`, 40, 60);
 
         if (withCover) {
-            for(let i=0; i<target.length; i++) {
+            for (let i = 0; i < target.length; i++) {
                 const b = target[i];
-                const x = 30 + (i % 3) * 250;
-                const y = 100 + Math.floor(i / 3) * 300;
+                const x = 40 + (i % 3) * 250;
+                const y = 100 + Math.floor(i / 3) * 320;
                 if (b.img) {
                     const img = new Image();
                     img.crossOrigin = "anonymous";
-                    img.src = getSafeProxyImg(b.img);
-                    await new Promise(res => {
-                        img.onload = () => { ctx.drawImage(img, x, y, 220, 280); res(); };
-                        img.onerror = () => { ctx.fillStyle="#eee"; ctx.fillRect(x,y,220,280); res(); };
+                    img.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(b.img.replace('http://', 'https://'))}`;
+                    await new Promise(resolve => {
+                        img.onload = () => { ctx.drawImage(img, x, y, 200, 280); resolve(); };
+                        img.onerror = () => { ctx.fillStyle="#eee"; ctx.fillRect(x,y,200,280); resolve(); };
                     });
                 } else {
-                    ctx.fillStyle="#eee"; ctx.fillRect(x,y,220,280);
+                    ctx.fillStyle="#eee"; ctx.fillRect(x,y,200,280);
                 }
             }
         } else {
             target.forEach((b, i) => {
-                ctx.fillStyle="#333"; ctx.font = "20px sans-serif";
-                ctx.fillText(`・ ${b.title} (${b.author})`, 30, 110 + i * 45);
+                ctx.fillStyle="#333"; ctx.font = "bold 18px sans-serif";
+                ctx.fillText(`${b.title} / ${b.author}`, 40, 110 + i * 70);
+                ctx.fillStyle="#666"; ctx.font = "14px sans-serif";
+                ctx.fillText(`${b.date} | ${b.genre} | ${b.comment}`, 40, 135 + i * 70);
             });
         }
 
         const dataUrl = canvas.toDataURL('image/png');
         document.getElementById('sharePreviewImg').src = dataUrl;
         document.getElementById('shareDownloadLink').href = dataUrl;
-        area.style.display = 'none';
-        document.getElementById('sharePreviewArea').style.display = 'block';
+        progress.style.display = 'none'; preview.classList.remove('hidden');
+    }
+
+    // CSV入出力などは簡略化して維持
+    function exportToCSV() {
+        let csv = "タイトル,著者,日付,ジャンル,コメント,ISBN,書影URL\n";
+        books.forEach(b => csv += `"${b.title}","${b.author}","${b.date}","${b.genre}","${b.comment}","${b.isbn}","${b.img}"\n`);
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "honlog.csv"; a.click();
+    }
+    function importFromCSV(e) {
+        const reader = new FileReader();
+        reader.onload = (f) => {
+            const rows = f.target.result.split('\n').slice(1);
+            rows.forEach(row => {
+                const c = row.split('","').map(v => v.replace(/"/g, ""));
+                if (c.length >= 7) books.push({title:c[0], author:c[1], date:c[2], genre:c[3], comment:c[4], isbn:c[5], img:c[6]});
+            });
+            localStorage.setItem('myBooks', JSON.stringify(books)); render();
+        };
+        reader.readAsText(e.target.files[0]);
     }
 
     render();
