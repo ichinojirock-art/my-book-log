@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Book Log Ultra V7</title>
+    <title>My Book Log Ultra V8</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
@@ -20,14 +20,8 @@
         .btn-search { background: #5f6368; color: white; flex: none; width: 60px; height: 42px; margin-top: 5px; }
 
         .search-results { 
-            background: #ffffff; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            max-height: 320px; 
-            overflow-y: auto; 
-            display: none; 
-            border: 2px solid var(--primary); 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: #ffffff; border-radius: 8px; margin-bottom: 15px; max-height: 320px; 
+            overflow-y: auto; display: none; border: 2px solid var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 12px; }
         .search-item img { width: 45px; height: auto; border-radius: 3px; flex-shrink: 0; }
@@ -40,24 +34,23 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; width: 90%; max-width: 400px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
         input, select, textarea { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .modal-footer { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-confirm { background: var(--success); color: white; flex: 1; padding: 12px; height: 50px; }
-        .btn-cancel { background: var(--danger); color: white; flex: 1; padding: 12px; height: 50px; }
-
+        
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #ddd; }
         .calendar-day { background: white; min-height: 50px; padding: 2px; font-size: 11px; text-align: center; cursor: pointer; }
         .calendar-day.active { background: #e8f0fe; border: 2px solid var(--primary); }
         .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; margin-top: 2px; }
 
-        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-        .book-card { background: white; padding: 12px; border-radius: 10px; border: 1px solid #eee; display: flex; flex-direction: column; }
+        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+        .book-card { background: white; padding: 12px; border-radius: 10px; border: 1px solid #eee; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .book-card img { width: 100%; border-radius: 6px; margin-bottom: 8px; }
-        .book-info { font-size: 12px; flex-grow: 1; }
+        .book-info { font-size: 12px; line-height: 1.4; flex-grow: 1; }
+        .book-meta { font-size: 10px; color: #666; margin-top: 4px; }
+        .book-comment { font-style: italic; color: #444; border-top: 1px solid #f0f0f0; margin-top: 8px; padding-top: 5px; font-size: 11px; }
         
         .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .table-view { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
-        .table-view td { padding: 8px; border-bottom: 1px solid #eee; }
-        .table-thumb { width: 40px; border-radius: 3px; }
+        .table-view td { padding: 10px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .table-thumb { width: 45px; border-radius: 3px; display: block; }
     </style>
 </head>
 <body>
@@ -70,9 +63,7 @@
             <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
             <button class="btn btn-sub btn-export" onclick="exportToCSV()">📊 CSV出力</button>
         </div>
-        
         <div id="interactive" class="viewport hidden"></div>
-        
         <div class="card">
             <div style="display: flex; gap: 5px; margin-bottom: 10px;">
                 <button class="btn btn-sub" onclick="setView('card')">カード</button>
@@ -109,7 +100,7 @@
             <input type="text" id="fGenre" list="genreOptions" placeholder="選択または入力">
             <datalist id="genreOptions"></datalist>
             <label>コメント</label><textarea id="fComment" rows="3"></textarea>
-            <div class="modal-footer">
+            <input type="hidden" id="fIsbn"> <div class="modal-footer">
                 <button class="btn btn-confirm" onclick="saveData()">保存</button>
                 <button class="btn btn-cancel" onclick="closeModal()">中止</button>
             </div>
@@ -142,11 +133,7 @@
         }, (err) => { if(!err) Quagga.start(); });
     }
 
-    function stopScanner() {
-        Quagga.stop();
-        document.getElementById('interactive').classList.add('hidden');
-        document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
-    }
+    function stopScanner() { Quagga.stop(); document.getElementById('interactive').classList.add('hidden'); document.getElementById('scanToggleBtn').innerText = "📷 スキャン"; }
 
     Quagga.onDetected(async (data) => {
         const code = data.codeResult.code;
@@ -156,7 +143,7 @@
             const json = await res.json();
             if (json.items) {
                 const info = json.items[0].volumeInfo;
-                openModal({ title: info.title, author: info.authors?.[0] || "", date: new Date().toISOString().split('T')[0], img: info.imageLinks?.thumbnail || "", genre: "", comment: "" }, -1);
+                openModal({ title: info.title, author: info.authors?.[0] || "", date: new Date().toISOString().split('T')[0], img: info.imageLinks?.thumbnail || "", genre: "", comment: "", isbn: code }, -1);
             } else { alert("見つかりませんでした"); startScanner(); }
         }
     });
@@ -168,17 +155,13 @@
 
         resArea.innerHTML = "<div style='padding:10px'>検索中...</div>";
         resArea.style.display = "block";
-
         const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
 
         try {
-            // maxResultsを最大値の40に設定して取得
             const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
             const json = await res.json();
-            
             let html = "";
             if (json.items) {
-                // 部分一致によるフィルタリング（より柔軟に）
                 const filteredItems = json.items.filter(item => {
                     const normalizedTitle = normalizeText(item.volumeInfo.title || "");
                     const normalizedAuthor = normalizeText(item.volumeInfo.authors?.[0] || "");
@@ -186,43 +169,33 @@
                     return keywords.every(kw => combinedText.includes(kw));
                 });
 
-                if (filteredItems.length > 0) {
-                    html = filteredItems.map(item => {
-                        const info = item.volumeInfo;
-                        const img = info.imageLinks?.thumbnail || "";
-                        const author = info.authors?.[0] || "不明";
-                        const displayTitle = info.title.replace(new RegExp(`(${query.replace(/\s+/g, '|')})`, 'gi'), '<span class="hl">$1</span>');
-                        return `
-                            <div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${author.replace(/['"`]/g, "")}', '${img}')">
-                                <img src="${img || 'https://via.placeholder.com/40x60'}">
-                                <div style="overflow:hidden"><strong>${displayTitle}</strong><br><small>${author}</small></div>
-                            </div>`;
-                    }).join('');
-                } else {
-                    html = "<div style='padding:10px; font-size:11px; color:#666;'>絞り込み条件に合うものがありませんでした。キーワードを短くしてみてください。</div>";
-                    // 絞り込みで0件なら上位3件だけ参考として出す
-                    html += json.items.slice(0, 3).map(item => {
-                        const info = item.volumeInfo;
-                        const img = info.imageLinks?.thumbnail || "";
-                        return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${(info.authors?.[0] || "不明").replace(/['"`]/g, "")}', '${img}')">
-                            <img src="${img || 'https://via.placeholder.com/40x60'}">
-                            <div><strong>${info.title}</strong><br><small>候補</small></div>
+                const itemsToDisplay = filteredItems.length > 0 ? filteredItems : json.items.slice(0, 5);
+                html = itemsToDisplay.map(item => {
+                    const info = item.volumeInfo;
+                    const img = info.imageLinks?.thumbnail || "";
+                    const isbn = info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
+                    const safeTitle = info.title.replace(/['"`]/g, "");
+                    const safeAuthor = (info.authors?.[0] || "不明").replace(/['"`]/g, "");
+                    return `
+                        <div class="search-item" onclick="selectSearchBook('${safeTitle}', '${safeAuthor}', '${img}', '${isbn}')">
+                            <img src="${img || 'https://via.placeholder.com/45x65'}">
+                            <div style="overflow:hidden"><strong>${info.title}</strong><br><small>${info.authors?.[0] || "不明"}</small></div>
                         </div>`;
-                    }).join('');
-                }
-            } else { html = "<div style='padding:10px'>APIで本が見つかりませんでした</div>"; }
+                }).join('');
+            } else { html = "<div style='padding:10px'>見つかりませんでした</div>"; }
             resArea.innerHTML = html;
-        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>通信エラーが発生しました</div>"; }
+        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>通信エラー</div>"; }
     }
 
-    function selectSearchBook(title, author, img) {
+    function selectSearchBook(title, author, img, isbn) {
         document.getElementById('fTitle').value = title;
         document.getElementById('fAuthor').value = author;
+        document.getElementById('fIsbn').value = isbn;
         document.getElementById('editModal').dataset.img = img;
         document.getElementById('searchResults').style.display = "none";
     }
 
-    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"" }, -1); }
+    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"", isbn:"" }, -1); }
 
     function openModal(data, index) {
         editingIndex = index;
@@ -231,8 +204,8 @@
         document.getElementById('fDate').value = data.date;
         document.getElementById('fGenre').value = data.genre;
         document.getElementById('fComment').value = data.comment;
+        document.getElementById('fIsbn').value = data.isbn || "";
         document.getElementById('editModal').dataset.img = data.img;
-        document.getElementById('searchResults').innerHTML = "";
         document.getElementById('searchResults').style.display = "none";
         document.getElementById('editModal').style.display = 'flex';
         updateGenreDatalist();
@@ -252,7 +225,8 @@
             date: document.getElementById('fDate').value,
             genre: genre || "未分類",
             comment: document.getElementById('fComment').value,
-            img: document.getElementById('editModal').dataset.img || ""
+            img: document.getElementById('editModal').dataset.img || "",
+            isbn: document.getElementById('fIsbn').value || ""
         };
         if (editingIndex > -1) books[editingIndex] = data;
         else books.unshift(data);
@@ -263,11 +237,7 @@
     }
 
     function deleteBook(index) {
-        if (confirm("削除しますか？")) {
-            books.splice(index, 1);
-            localStorage.setItem('myBooks', JSON.stringify(books));
-            render();
-        }
+        if (confirm("削除しますか？")) { books.splice(index, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); }
     }
 
     function setView(v) { currentView = v; filterDate = null; render(); }
@@ -290,20 +260,28 @@
         if (currentView === 'table') {
             listEl.innerHTML = `<table class="table-view">
                 ${filtered.map(b => `<tr>
-                    <td><img src="${b.img || 'https://via.placeholder.com/40x60'}" class="table-thumb"></td>
-                    <td><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
+                    <td><img src="${b.img || 'https://via.placeholder.com/45x65'}" class="table-thumb"></td>
+                    <td>
+                        <strong>${b.title}</strong><br>
+                        <small>${b.author} | ${b.date} | ${b.genre}</small>
+                        <div style="color:#666; margin-top:4px;">${b.comment}</div>
+                    </td>
                     <td style="text-align:right">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub">編</button>
-                        <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red;border:none">消</button>
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub" style="margin-bottom:5px">編</button><br>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red; border-color:red">消</button>
                     </td></tr>`).join('')}</table>`;
         } else {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
                 <div class="book-card">
                     <img src="${b.img || 'https://via.placeholder.com/150x200'}">
-                    <div class="book-info"><strong>${b.title}</strong><br><small>${b.author}</small></div>
-                    <div class="actions">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub btn-sm">編集</button>
-                        <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub btn-sm" style="color:red;border-color:red">削除</button>
+                    <div class="book-info">
+                        <strong>${b.title}</strong><br><small>${b.author}</small>
+                        <div class="book-meta">${b.date} / ${b.genre}</div>
+                        ${b.comment ? `<div class="book-comment">${b.comment}</div>` : ''}
+                    </div>
+                    <div class="actions" style="display:flex; gap:5px; margin-top:10px;">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub btn-sm" style="flex:1">編集</button>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub btn-sm" style="flex:1; color:red; border-color:red">削除</button>
                     </div>
                 </div>`).join('')}</div>`;
         }
@@ -335,10 +313,10 @@
         document.getElementById('genreOptions').innerHTML = genres.map(g => `<option value="${g}">${g}</option>`).join('');
     }
     function exportToCSV() {
-        let csv = "タイトル,著者,日付,ジャンル,コメント\n";
-        books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
+        let csv = "タイトル,著者,日付,ジャンル,コメント,ISBN\n";
+        books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment, b.isbn].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv;charset=utf-8;" });
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "books.csv"; a.click();
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `books_backup_${new Date().toISOString().split('T')[0]}.csv`; a.click();
     }
     render();
 </script>
