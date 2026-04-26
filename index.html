@@ -100,13 +100,15 @@
 
         <!-- 撮影モード -->
         <div id="photoMode" class="hidden">
-            <div style="position:relative; background:black; border-radius:10px; overflow:hidden; min-height:220px;">
+            <!-- カメラビュー（撮影前のみ表示） -->
+            <div id="cameraViewArea" style="position:relative; background:black; border-radius:10px; overflow:hidden; min-height:220px;">
                 <video id="photoVideo" style="width:100%; display:block;" autoplay playsinline></video>
                 <button id="captureBtn" onclick="capturePhoto()">📸</button>
             </div>
             <canvas id="captureCanvas" style="display:none;"></canvas>
-            <div id="captureResultArea" class="hidden" style="margin-top:10px;">
-                <img id="capturePreview" alt="撮影画像">
+            <!-- 撮影結果ビュー（撮影後のみ表示） -->
+            <div id="captureResultArea" class="hidden">
+                <img id="capturePreview" alt="撮影画像" style="width:100%; border-radius:10px; display:block;">
                 <p class="status-msg" id="captureStatus">解析中...</p>
             </div>
         </div>
@@ -209,6 +211,14 @@
         hideBanner();
     }
 
+    // スキャナUIを閉じる専用関数（toggleScannerと状態を共有しない）
+    function closeScanner() {
+        stopAllScanning();
+        document.getElementById('scannerArea').classList.add('hidden');
+        document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
+        scannerOpen = false;
+    }
+
     // ========== モード切替 ==========
     function setScanMode(mode) {
         currentScanMode = mode;
@@ -268,7 +278,9 @@
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
 
-        // プレビュー表示
+        // カメラストリームを即停止してビューを切り替え
+        if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
+        document.getElementById('cameraViewArea').classList.add('hidden');
         const dataUrl = canvas.toDataURL('image/jpeg');
         document.getElementById('capturePreview').src = dataUrl;
         document.getElementById('captureResultArea').classList.remove('hidden');
@@ -285,7 +297,7 @@
                 document.getElementById('captureStatus').textContent = '読み取り完了！';
                 showIsbnBanner(result.codeResult.code);
             } else {
-                document.getElementById('captureStatus').textContent = '⚠️ バーコードを検出できませんでした。もう一度撮影してください。';
+                document.getElementById('captureStatus').textContent = '⚠️ バーコードを検出できませんでした。';
             }
         });
     }
@@ -306,37 +318,62 @@
         if (!pendingIsbn) return;
         const isbn = pendingIsbn;
         hideBanner();
+        document.getElementById('isbnConfirmBanner').classList.remove('hidden');
+        document.getElementById('isbnConfirmBanner').innerHTML = `<div style="text-align:center; padding:10px; color:#555;">🔍 ISBN ${isbn} を検索中...</div>`;
 
         try {
-            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
-            const json = await res.json();
-            if (json.items && json.items.length > 0) {
-                const info = json.items[0].volumeInfo;
-                stopAllScanning();
-                toggleScanner(); // スキャナを閉じる
-                openModal({
-                    title: info.title,
+            // ① Google Books APIで検索
+            let bookData = null;
+            const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+            const gJson = await gRes.json();
+
+            if (gJson.items && gJson.items.length > 0) {
+                const info = gJson.items[0].volumeInfo;
+                bookData = {
+                    title: info.title || "",
                     author: info.authors?.[0] || "",
-                    date: new Date().toISOString().split('T')[0],
                     img: info.imageLinks?.thumbnail || "",
-                    genre: "",
-                    comment: "",
                     isbn: isbn
+                };
+            } else {
+                // ② Google Booksになければ国立国会図書館APIで検索（フォールバック）
+                const ndlRes = await fetch(`https://iss.ndl.go.jp/api/opensearch?isbn=${isbn}&cnt=1`);
+                const ndlText = await ndlRes.text();
+                const parser = new DOMParser();
+                const ndlDoc = parser.parseFromString(ndlText, "application/xml");
+                const item = ndlDoc.querySelector("item");
+                if (item) {
+                    const title = item.querySelector("title")?.textContent || "";
+                    const author = item.querySelector("author")?.textContent || "";
+                    bookData = { title, author, img: "", isbn };
+                }
+            }
+
+            hideBanner(); // 「検索中」表示を消す
+
+            if (bookData) {
+                closeScanner();
+                openModal({
+                    ...bookData,
+                    date: new Date().toISOString().split('T')[0],
+                    genre: "",
+                    comment: ""
                 }, -1);
             } else {
-                // 見つからなかった場合もISBNを保持して手動登録へ
-                const goManual = confirm(`ISBN: ${isbn} で検索しましたが、書籍が見つかりませんでした。\n手動で情報を入力しますか？`);
+                // 両APIで見つからなかった
+                showIsbnBanner(isbn); // バナーを再表示してISBNを保持
+                const goManual = confirm(`ISBN: ${isbn} で検索しましたが、どのデータベースにも見つかりませんでした。\n手動で情報を入力しますか？`);
                 if (goManual) {
-                    stopAllScanning();
-                    toggleScanner();
+                    closeScanner();
                     openModal({ title: "", author: "", date: new Date().toISOString().split('T')[0], img: "", genre: "", comment: "", isbn: isbn }, -1);
                 } else {
                     retryScanning();
                 }
             }
         } catch(e) {
+            hideBanner();
             alert('通信エラーが発生しました。ネットワーク接続を確認してください。');
-            retryScanning();
+            showIsbnBanner(isbn);
         }
     }
 
@@ -345,8 +382,11 @@
         if (currentScanMode === 'live') {
             startLiveScanner();
         } else {
+            // 撮影モード：カメラを再起動してビューを戻す
             document.getElementById('captureResultArea').classList.add('hidden');
             document.getElementById('captureStatus').textContent = '解析中...';
+            document.getElementById('cameraViewArea').classList.remove('hidden');
+            startPhotoCamera();
         }
     }
 
