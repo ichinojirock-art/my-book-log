@@ -228,6 +228,13 @@
     }
 
     // ========== モード切替 ==========
+    function resetPhotoUI() {
+        // 撮影モードのUI状態を必ずクリーンな初期状態に戻す
+        document.getElementById('cameraViewArea').classList.remove('hidden');
+        document.getElementById('captureResultArea').classList.add('hidden');
+        document.getElementById('captureStatus').textContent = '解析中...';
+    }
+
     function setScanMode(mode) {
         currentScanMode = mode;
         stopAllScanning();
@@ -236,10 +243,13 @@
         document.getElementById('modePhotoBtn').classList.toggle('active', mode === 'photo');
         document.getElementById('liveMode').classList.toggle('hidden', mode !== 'live');
         document.getElementById('photoMode').classList.toggle('hidden', mode !== 'photo');
-        document.getElementById('captureResultArea').classList.add('hidden');
 
-        if (mode === 'live') startLiveScanner();
-        else startPhotoCamera();
+        if (mode === 'live') {
+            startLiveScanner();
+        } else {
+            resetPhotoUI();   // ← cameraViewArea表示・captureResultArea非表示を確実に実施
+            startPhotoCamera();
+        }
     }
 
     // ========== リアルタイムスキャン ==========
@@ -467,11 +477,9 @@
         }
     }
 
-    // 撮影モードで再撮影：プレビューを隠してカメラを再起動
+    // 撮影モードで再撮影：UI初期化してカメラを再起動
     function retryCapture() {
-        document.getElementById('captureResultArea').classList.add('hidden');
-        document.getElementById('captureStatus').textContent = '解析中...';
-        document.getElementById('cameraViewArea').classList.remove('hidden');
+        resetPhotoUI();
         startPhotoCamera();
     }
 
