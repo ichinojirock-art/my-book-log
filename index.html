@@ -349,57 +349,53 @@
         document.getElementById('isbnPopup').style.display = 'none';
         showSearchingOverlay(isbn);
 
-        try {
-            // ① isbn:プレフィックスで検索
-            let bookData = null;
-            const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
-            const gJson = await gRes.json();
+        let bookData = null;
+        let lastResponse = null;
 
-            if (gJson.items && gJson.items.length > 0) {
-                const info = gJson.items[0].volumeInfo;
-                bookData = {
-                    title: info.title || "",
-                    author: info.authors?.[0] || "",
-                    img: info.imageLinks?.thumbnail || "",
-                    isbn: isbn
-                };
-            } else {
-                // ② isbn:で見つからない場合、ISBNをキーワードとしてそのまま検索
-                const gRes2 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${isbn}&maxResults=5`);
-                const gJson2 = await gRes2.json();
-                if (gJson2.items && gJson2.items.length > 0) {
-                    // ISBNが一致するものを優先、なければ先頭
-                    const matched = gJson2.items.find(item =>
-                        item.volumeInfo.industryIdentifiers?.some(id => id.identifier === isbn)
-                    ) || gJson2.items[0];
-                    const info = matched.volumeInfo;
+        try {
+            // ① Open Library API（無制限・APIキー不要）
+            const olRes = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+            const olJson = await olRes.json();
+            lastResponse = olJson;
+            const olBook = olJson[`ISBN:${isbn}`];
+            if (olBook) {
+                const author = olBook.authors?.[0]?.name || "";
+                const img = olBook.cover?.medium || olBook.cover?.small || "";
+                bookData = { title: olBook.title || "", author, img, isbn };
+            }
+        } catch(e) { /* Open Library失敗時はGoogle Booksへ */ }
+
+        if (!bookData) {
+            try {
+                // ② Google Books API（クォータあり・フォールバック）
+                const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
+                const gJson = await gRes.json();
+                lastResponse = gJson;
+                if (gJson.items?.length > 0) {
+                    const info = gJson.items[0].volumeInfo;
                     bookData = {
                         title: info.title || "",
                         author: info.authors?.[0] || "",
                         img: info.imageLinks?.thumbnail || "",
-                        isbn: isbn
+                        isbn
                     };
                 }
-            }
+            } catch(e) { /* 両方失敗 */ }
+        }
 
-            hideSearchingOverlay();
+        hideSearchingOverlay();
 
-            if (bookData) {
-                pendingIsbn = null;
-                closeScanner();
-                openModal({
-                    ...bookData,
-                    date: new Date().toISOString().split('T')[0],
-                    genre: "", comment: ""
-                }, -1);
-            } else {
-                pendingIsbn = isbn;
-                showNotFoundPopup(isbn, gJson);
-            }
-        } catch(e) {
-            hideSearchingOverlay();
+        if (bookData) {
+            pendingIsbn = null;
+            closeScanner();
+            openModal({
+                ...bookData,
+                date: new Date().toISOString().split('T')[0],
+                genre: "", comment: ""
+            }, -1);
+        } else {
             pendingIsbn = isbn;
-            showErrorPopup(isbn, e.message);
+            showNotFoundPopup(isbn, lastResponse);
         }
     }
 
@@ -464,13 +460,7 @@
         }
     }
 
-    // ========== タイトル検索 ==========
-    // 【修正点】
-    //   元コード: filtered が空のとき json.items.slice(0,5) を表示していた
-    //            → タイトルに含まれないものまで表示されていた
-    //   修正後:  タイトルのみに対するマッチを優先し、
-    //            一致ゼロの場合は「見つかりませんでした」と表示する
-    //   追加:    タイトルマッチしないが著者・説明文にマッチするものは「関連候補」として区切って表示
+    // ========== タイトル検索（Open Library優先、Google Booksフォールバック）==========
     async function searchBooks() {
         const query = document.getElementById('fTitle').value.trim();
         const resArea = document.getElementById('searchResults');
@@ -481,55 +471,71 @@
 
         const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
 
+        // Open Libraryの結果をレンダリング用に統一フォーマットへ変換
+        const normalizeOL = (doc) => ({
+            title: doc.title || "",
+            author: doc.author_name?.[0] || "",
+            img: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : "",
+            isbn: doc.isbn?.[0] || ""
+        });
+
+        // Google Booksの結果を統一フォーマットへ変換
+        const normalizeGB = (item) => {
+            const info = item.volumeInfo;
+            return {
+                title: info.title || "",
+                author: info.authors?.[0] || "",
+                img: info.imageLinks?.thumbnail || "",
+                isbn: info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || ""
+            };
+        };
+
+        const renderItem = (book) => {
+            const safeTitle = book.title.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+            const safeAuthor = book.author.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+            const safeImg = book.img.replace(/'/g, "\\'");
+            return `<div class="search-item" onclick="selectSearchBook('${safeTitle}','${safeAuthor}','${safeImg}','${book.isbn}')">
+                <img src="${book.img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
+                <div><strong>${book.title}</strong><br><small>${book.author}</small></div>
+            </div>`;
+        };
+
+        const filterByTitle = (books) => books.filter(b => {
+            const normTitle = normalizeText(b.title);
+            return keywords.every(kw => normTitle.includes(kw));
+        });
+
         try {
-            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
-            const json = await res.json();
-            
-            if (!json.items || json.items.length === 0) {
-                resArea.innerHTML = "<div style='padding:10px'>見つかりませんでした</div>";
-                return;
+            // ① Open Library検索
+            const olRes = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=40&lang=jpn`);
+            const olJson = await olRes.json();
+
+            let books = (olJson.docs || []).map(normalizeOL);
+            let titleMatched = filterByTitle(books);
+
+            // ② Open Libraryで結果が薄い場合はGoogle Booksも試みる
+            if (titleMatched.length < 3) {
+                try {
+                    const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
+                    const gJson = await gRes.json();
+                    if (gJson.items?.length > 0) {
+                        const gbBooks = gJson.items.map(normalizeGB);
+                        const gbMatched = filterByTitle(gbBooks);
+                        // 重複タイトルを除いてマージ
+                        const existingTitles = new Set(titleMatched.map(b => normalizeText(b.title)));
+                        gbMatched.forEach(b => {
+                            if (!existingTitles.has(normalizeText(b.title))) titleMatched.push(b);
+                        });
+                    }
+                } catch(e) { /* Google Books失敗は無視 */ }
             }
 
-            // タイトルに全キーワードが含まれるものを「完全一致候補」とする
-            const titleMatched = json.items.filter(item => {
-                const normTitle = normalizeText(item.volumeInfo.title);
-                return keywords.every(kw => normTitle.includes(kw));
-            });
-
-            // タイトル不一致でも著者名を含む場合は「関連候補」とする
-            const titleMatchedSet = new Set(titleMatched.map(i => i.id));
-            const relatedMatched = json.items.filter(item => {
-                if (titleMatchedSet.has(item.id)) return false;
-                const normAuthor = normalizeText(item.volumeInfo.authors?.[0] || "");
-                return keywords.every(kw => normAuthor.includes(kw));
-            });
-
-            if (titleMatched.length === 0 && relatedMatched.length === 0) {
+            if (titleMatched.length === 0) {
                 resArea.innerHTML = "<div style='padding:10px'>タイトルに一致する書籍が見つかりませんでした<br><small style='color:#999'>（APIの検索結果に類似書籍が含まれますが、タイトルが一致しないため除外しています）</small></div>";
                 return;
             }
 
-            const renderItem = item => {
-                const info = item.volumeInfo;
-                const img = info.imageLinks?.thumbnail || "";
-                const isbn = info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
-                const safeTitle = (info.title || "").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-                const safeAuthor = (info.authors?.[0] || "不明").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-                const safeImg = (img || "").replace(/'/g, "\\'");
-                return `<div class="search-item" onclick="selectSearchBook('${safeTitle}', '${safeAuthor}', '${safeImg}', '${isbn}')">
-                    <img src="${img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
-                    <div><strong>${info.title}</strong><br><small>${info.authors?.[0] || ""}</small></div>
-                </div>`;
-            };
-
-            let html = titleMatched.map(renderItem).join('');
-
-            if (relatedMatched.length > 0) {
-                html += `<div class="search-nomatch">── 著者名一致（タイトル不一致）──</div>`;
-                html += relatedMatched.slice(0, 5).map(renderItem).join('');
-            }
-
-            resArea.innerHTML = html;
+            resArea.innerHTML = titleMatched.slice(0, 15).map(renderItem).join('');
         } catch(e) {
             resArea.innerHTML = "<div style='padding:10px'>エラーが発生しました</div>";
         }
