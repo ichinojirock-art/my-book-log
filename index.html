@@ -36,7 +36,7 @@
 
         .status-msg { font-size: 13px; color: #666; padding: 6px 0; text-align: center; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
-        .calendar-day { background: white; padding: 3px 1px; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; line-height: 1.3; }
+        .calendar-day { background: white; height: 38px; padding: 3px 1px; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; line-height: 1.3; box-sizing: border-box; }
         .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
         .count-badge { display: block; background: var(--primary); color: white; border-radius: 8px; font-size: 9px; padding: 1px 4px; margin-top: 2px; width: fit-content; }
 
@@ -245,6 +245,8 @@
     // ========== リアルタイムスキャン ==========
     function startLiveScanner() {
         const el = document.getElementById('interactive');
+        // Quaggaは再init前にDOM要素をクリアしないと内部状態が壊れる
+        el.innerHTML = '';
         document.getElementById('liveScanStatus').textContent = 'カメラを起動中...';
         Quagga.init({
             inputStream: { name: "Live", type: "LiveStream", target: el, constraints: { facingMode: "environment" } },
@@ -616,8 +618,9 @@
                     <img src="${b.img || 'https://via.placeholder.com/150x200'}" onerror="this.src='https://via.placeholder.com/150x200'">
                     <div class="book-info">
                         <strong>${b.title}</strong><br><small>${b.author}</small>
-                        <div class="book-meta">${b.date} / ${b.genre}</div>
-                        ${b.comment ? `<div class="book-comment">${b.comment}</div>` : ''}
+                        <div class="book-meta">${b.date}</div>
+                        <div class="book-meta">📁 ${b.genre || '未分類'}</div>
+                        ${b.comment ? `<div class="book-comment">💬 ${b.comment}</div>` : ''}
                     </div>
                     <div style="display:flex; gap:5px; margin-top:10px;">
                         <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub" style="min-height:36px; font-size:12px;">編集</button>
@@ -639,7 +642,8 @@
             const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             const count = books.filter(b => b.date === dStr).length;
             grid.innerHTML += `<div class="calendar-day ${filterDate===dStr?'active':''}" onclick="filterByDate('${dStr}')">
-                ${d}${count>0?`<span class="count-badge">${count}</span>`:''}
+                <span>${d}</span>
+                ${count > 0 ? `<span class="count-badge">${count}</span>` : `<span style="display:block;height:18px;"></span>`}
             </div>`;
         }
     }
