@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Book Log Ultra V10</title>
+    <title>My Book Log Ultra V11</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
@@ -18,63 +18,35 @@
         
         .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; }
 
-        /* カレンダー修正：崩れ防止 */
-        .calendar-grid { 
-            display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
-            gap: 1px; 
-            background: #ccc; 
-            border: 1px solid #ccc;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .calendar-day { 
-            background: white; 
-            min-height: 60px; 
-            padding: 4px 2px; 
-            font-size: 12px; 
-            text-align: center; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+        /* カレンダー */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        .calendar-day { background: white; min-height: 60px; padding: 4px 2px; font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
         .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
-        .count-badge { 
-            display: block; 
-            background: var(--primary); 
-            color: white; 
-            border-radius: 10px; 
-            font-size: 9px; 
-            padding: 2px 4px;
-            margin-top: 4px;
-            width: fit-content;
-        }
+        .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; padding: 2px 4px; margin-top: 4px; width: fit-content; }
 
         /* モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; width: 92%; max-width: 400px; border-radius: 16px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
-        
         .modal-footer { display: flex; gap: 12px; margin-top: 20px; }
         .btn-confirm { background: var(--success); color: white; min-height: 54px; flex: 1; }
         .btn-cancel { background: var(--danger); color: white; min-height: 54px; flex: 1; }
 
         input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
 
+        /* 検索ボックス */
         .search-box { display: flex; gap: 8px; align-items: flex-start; }
-        .btn-search { background: #5f6368; color: white; flex: none; width: 70px; height: 44px; margin-top: 8px; border-radius: 8px; border: none; }
+        .btn-search { background: #5f6368; color: white; flex: none; width: 70px; height: 44px; margin-top: 8px; border-radius: 8px; border: none; font-weight: bold; }
 
-        .search-results { 
-            background: #ffffff; border-radius: 8px; margin-bottom: 15px; max-height: 250px; 
-            overflow-y: auto; display: none; border: 2px solid var(--primary); 
-        }
+        .search-results { background: #ffffff; border-radius: 8px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; display: none; border: 2px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 13px; }
-        .search-item img { width: 40px; height: auto; }
+        .search-item img { width: 40px; height: auto; border-radius: 2px; }
+        .search-item:hover { background: #f8f9fa; }
 
-        /* リスト */
+        /* リスト表示 */
         .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-        .book-card { background: white; padding: 12px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .book-card { background: white; padding: 12px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
         .book-card img { width: 100%; border-radius: 8px; margin-bottom: 8px; }
-        .book-info { font-size: 13px; line-height: 1.4; }
+        .book-info { font-size: 13px; line-height: 1.4; flex-grow: 1; }
         .book-meta { font-size: 11px; color: #666; margin: 4px 0; }
         .book-comment { font-size: 12px; color: #444; border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; font-style: italic; }
 
@@ -116,9 +88,9 @@
     <div id="editModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top:0; text-align:center;">書籍情報の登録</h3>
-            <label>タイトル（検索ワード）</label>
+            <label>タイトル（複数ワード可）</label>
             <div class="search-box">
-                <input type="text" id="fTitle" placeholder="作品名や著者名...">
+                <input type="text" id="fTitle" placeholder="作品名、著者名など...">
                 <button class="btn btn-search" onclick="searchBooks()">検索</button>
             </div>
             <div id="searchResults" class="search-results"></div>
@@ -146,7 +118,10 @@
     let calDate = new Date();
     let filterDate = null;
 
-    function normalizeText(text) { return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?]/g, ""); }
+    // 正規化関数：全角半角・記号・空白を無視して比較しやすくする
+    function normalizeText(text) { 
+        return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?]/g, ""); 
+    }
 
     function toggleScanner() {
         const el = document.getElementById('interactive');
@@ -172,21 +147,34 @@
             if (json.items) {
                 const info = json.items[0].volumeInfo;
                 openModal({ title: info.title, author: info.authors?.[0] || "", date: new Date().toISOString().split('T')[0], img: info.imageLinks?.thumbnail || "", genre: "", comment: "", isbn: code }, -1);
-            } else { alert("見つかりませんでした"); toggleScanner(); }
+            } else { alert("本が見つかりませんでした"); toggleScanner(); }
         }
     });
 
+    // 検索ロジックの復旧：正規化と複数キーワード対応
     async function searchBooks() {
         const query = document.getElementById('fTitle').value.trim();
         const resArea = document.getElementById('searchResults');
         if (!query) return;
+
         resArea.innerHTML = "<div style='padding:10px'>検索中...</div>";
         resArea.style.display = "block";
+
+        const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
+
         try {
-            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20`);
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
             const json = await res.json();
+            
             if (json.items) {
-                resArea.innerHTML = json.items.map(item => {
+                // 複数ワードで絞り込み
+                const filtered = json.items.filter(item => {
+                    const combined = normalizeText(item.volumeInfo.title + (item.volumeInfo.authors?.[0] || ""));
+                    return keywords.every(kw => combined.includes(kw));
+                });
+
+                const targets = filtered.length > 0 ? filtered : json.items.slice(0, 5);
+                resArea.innerHTML = targets.map(item => {
                     const info = item.volumeInfo;
                     const img = info.imageLinks?.thumbnail || "";
                     const isbn = info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
@@ -195,13 +183,15 @@
                         <div><strong>${info.title}</strong><br><small>${info.authors?.[0] || ""}</small></div>
                     </div>`;
                 }).join('');
-            } else { resArea.innerHTML = "<div style='padding:10px'>なし</div>"; }
-        } catch(e) { resArea.innerHTML = "エラー"; }
+            } else { resArea.innerHTML = "<div style='padding:10px'>見つかりませんでした</div>"; }
+        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>エラーが発生しました</div>"; }
     }
 
     function selectSearchBook(t, a, i, isbn) {
-        document.getElementById('fTitle').value = t; document.getElementById('fAuthor').value = a;
-        document.getElementById('fIsbn').value = isbn; document.getElementById('editModal').dataset.img = i;
+        document.getElementById('fTitle').value = t; 
+        document.getElementById('fAuthor').value = a;
+        document.getElementById('fIsbn').value = isbn; 
+        document.getElementById('editModal').dataset.img = i;
         document.getElementById('searchResults').style.display = "none";
     }
 
@@ -220,7 +210,7 @@
         updateGenreDatalist();
     }
 
-    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+    function closeModal() { document.getElementById('editModal').style.display = 'none'; stopScanner(); }
 
     function saveData() {
         const genre = document.getElementById('fGenre').value || "未分類";
@@ -236,7 +226,7 @@
         closeModal(); render();
     }
 
-    function deleteBook(idx) { if (confirm("削除しますか？")) { books.splice(idx, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); } }
+    function deleteBook(idx) { if (confirm("本当に削除しますか？")) { books.splice(idx, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); } }
 
     function setView(v) { currentView = v; filterDate = null; render(); }
 
@@ -255,12 +245,12 @@
         }
 
         if (currentView === 'table') {
-            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:13px;">
+            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:13px; background:white; border-radius:12px; overflow:hidden;">
                 ${filtered.map(b => `<tr style="border-bottom:1px solid #eee">
                     <td style="padding:10px 5px"><img src="${b.img || 'https://via.placeholder.com/40x60'}" style="width:45px; border-radius:4px;"></td>
-                    <td style="padding:10px 5px"><strong>${b.title}</strong><br><small>${b.author}</small></td>
-                    <td style="text-align:right">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sub" style="padding:4px 8px; min-height:30px; font-size:12px;">編</button>
+                    <td style="padding:10px 5px"><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
+                    <td style="text-align:right; padding:10px 5px">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sub" style="padding:4px 8px; min-height:30px; font-size:12px;">編集</button>
                     </td></tr>`).join('')}</table>`;
         } else {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
