@@ -346,46 +346,74 @@
         if (!pendingIsbn) return;
         const isbn = pendingIsbn;
 
-        // ポップアップを閉じて検索中オーバーレイを表示
         document.getElementById('isbnPopup').style.display = 'none';
         showSearchingOverlay(isbn);
 
         try {
-            const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+            // ① isbn:プレフィックスで検索
+            let bookData = null;
+            const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
             const gJson = await gRes.json();
-            hideSearchingOverlay();
 
             if (gJson.items && gJson.items.length > 0) {
                 const info = gJson.items[0].volumeInfo;
-                pendingIsbn = null;
-                closeScanner();
-                openModal({
+                bookData = {
                     title: info.title || "",
                     author: info.authors?.[0] || "",
                     img: info.imageLinks?.thumbnail || "",
-                    isbn: isbn,
+                    isbn: isbn
+                };
+            } else {
+                // ② isbn:で見つからない場合、ISBNをキーワードとしてそのまま検索
+                const gRes2 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${isbn}&maxResults=5`);
+                const gJson2 = await gRes2.json();
+                if (gJson2.items && gJson2.items.length > 0) {
+                    // ISBNが一致するものを優先、なければ先頭
+                    const matched = gJson2.items.find(item =>
+                        item.volumeInfo.industryIdentifiers?.some(id => id.identifier === isbn)
+                    ) || gJson2.items[0];
+                    const info = matched.volumeInfo;
+                    bookData = {
+                        title: info.title || "",
+                        author: info.authors?.[0] || "",
+                        img: info.imageLinks?.thumbnail || "",
+                        isbn: isbn
+                    };
+                }
+            }
+
+            hideSearchingOverlay();
+
+            if (bookData) {
+                pendingIsbn = null;
+                closeScanner();
+                openModal({
+                    ...bookData,
                     date: new Date().toISOString().split('T')[0],
                     genre: "", comment: ""
                 }, -1);
             } else {
-                // 見つからなかった → ISBNを保持したまま手動入力か再試行か選ばせる
                 pendingIsbn = isbn;
-                showNotFoundPopup(isbn);
+                showNotFoundPopup(isbn, gJson);
             }
         } catch(e) {
             hideSearchingOverlay();
             pendingIsbn = isbn;
-            showErrorPopup(isbn);
+            showErrorPopup(isbn, e.message);
         }
     }
 
-    function showNotFoundPopup(isbn) {
+    function showNotFoundPopup(isbn, debugJson) {
+        const debugInfo = debugJson ? JSON.stringify(debugJson).slice(0, 300) : '(なし)';
         document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
             <div style="text-align:center; padding:8px 0;">
                 <div style="font-size:32px; margin-bottom:8px;">📭</div>
                 <div style="font-size:15px; font-weight:bold; margin-bottom:6px;">書籍が見つかりませんでした</div>
                 <div style="font-size:13px; color:#555; margin-bottom:4px;">ISBN: <span style="font-family:monospace; font-weight:bold; color:#1a73e8;">${isbn}</span></div>
-                <div style="font-size:12px; color:#999; margin-bottom:20px;">Google Booksにデータがない本の可能性があります</div>
+                <details style="margin:8px 0 12px; text-align:left;">
+                    <summary style="font-size:11px; color:#999; cursor:pointer;">▶ APIレスポンス（デバッグ用）</summary>
+                    <div style="font-size:10px; color:#555; word-break:break-all; background:#f5f5f5; padding:6px; border-radius:4px; margin-top:4px; max-height:100px; overflow-y:auto;">${debugInfo}</div>
+                </details>
                 <div style="display:flex; gap:10px;">
                     <button class="btn btn-confirm" style="font-size:14px;" onclick="manualEntryWithIsbn('${isbn}')">✍️ 手動で入力</button>
                     <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
@@ -394,18 +422,21 @@
         document.getElementById('isbnPopup').style.display = 'flex';
     }
 
-    function showErrorPopup(isbn) {
-        document.getElementById('isbnPopup').style.display = 'flex';
+    function showErrorPopup(isbn, errMsg) {
         document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
             <div style="text-align:center; padding:8px 0;">
                 <div style="font-size:32px; margin-bottom:8px;">⚠️</div>
-                <div style="font-size:15px; font-weight:bold; margin-bottom:6px;">通信エラー</div>
-                <div style="font-size:13px; color:#555; margin-bottom:20px;">ネットワーク接続を確認してから再試行してください</div>
+                <div style="font-size:15px; font-weight:bold; margin-bottom:6px;">エラーが発生しました</div>
+                <details style="margin:8px 0 12px; text-align:left;">
+                    <summary style="font-size:11px; color:#999; cursor:pointer;">▶ エラー詳細（デバッグ用）</summary>
+                    <div style="font-size:10px; color:#555; word-break:break-all; background:#f5f5f5; padding:6px; border-radius:4px; margin-top:4px;">${errMsg || '不明なエラー'}</div>
+                </details>
                 <div style="display:flex; gap:10px;">
                     <button class="btn btn-confirm" onclick="retryIsbnSearch('${isbn}')">再試行</button>
                     <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
                 </div>
             </div>`;
+        document.getElementById('isbnPopup').style.display = 'flex';
     }
 
     function retryIsbnSearch(isbn) {
