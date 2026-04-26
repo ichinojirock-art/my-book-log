@@ -34,12 +34,7 @@
         /* 撮影した画像プレビュー */
         #capturePreview { width: 100%; border-radius: 8px; display: block; }
 
-        /* ISBN確認バナー */
-        #isbnConfirmBanner { background: #fff3cd; border: 1px solid #ffc107; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
-        #isbnConfirmBanner .isbn-value { font-size: 22px; font-weight: bold; letter-spacing: 2px; text-align: center; margin: 8px 0; color: #333; font-family: monospace; }
-        #isbnConfirmBanner .btn-row { display: flex; gap: 8px; margin-top: 10px; }
-
-        /* カレンダー */
+        .status-msg { font-size: 13px; color: #666; padding: 6px 0; text-align: center; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
         .calendar-day { background: white; min-height: 60px; padding: 4px 2px; font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
         .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
@@ -113,15 +108,6 @@
             </div>
         </div>
 
-        <!-- ISBN確認バナー（両モード共通） -->
-        <div id="isbnConfirmBanner" class="hidden">
-            <div style="font-size:13px; color:#856404;">📌 読み取ったISBN — 正しければ「この番号で検索」を押してください</div>
-            <div class="isbn-value" id="isbnDisplayValue">—</div>
-            <div class="btn-row">
-                <button class="btn btn-main" style="min-height:44px;" onclick="searchByConfirmedIsbn()">この番号で検索</button>
-                <button class="btn btn-sub" style="min-height:44px;" onclick="retryScanning()">やり直す</button>
-            </div>
-        </div>
     </div>
 
     <div class="card">
@@ -143,6 +129,29 @@
     </div>
 
     <div id="listDisplay"></div>
+
+    <!-- ISBN確認ポップアップ -->
+    <div id="isbnPopup" class="modal">
+        <div class="modal-content" style="text-align:center; padding:28px 20px;">
+            <div style="font-size:32px; margin-bottom:8px;">📌</div>
+            <div style="font-size:14px; color:#555; margin-bottom:4px;">読み取ったISBN</div>
+            <div id="isbnPopupValue" style="font-size:28px; font-weight:bold; letter-spacing:3px; font-family:monospace; color:#1a73e8; margin:12px 0 20px;"></div>
+            <div style="font-size:13px; color:#888; margin-bottom:20px;">正しければ検索を実行してください</div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-confirm" style="font-size:15px;" onclick="searchByConfirmedIsbn()">🔍 この番号で検索</button>
+                <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 検索中オーバーレイ -->
+    <div id="searchingOverlay" class="modal" style="background:rgba(0,0,0,0.6);">
+        <div style="background:white; padding:28px 32px; border-radius:16px; text-align:center;">
+            <div style="font-size:28px; margin-bottom:10px;">🔍</div>
+            <div id="searchingMsg" style="font-size:15px; color:#333;">書籍情報を検索中...</div>
+            <div style="font-size:13px; color:#999; margin-top:6px;" id="searchingIsbnLabel"></div>
+        </div>
+    </div>
 
     <div id="editModal" class="modal">
         <div class="modal-content">
@@ -208,7 +217,6 @@
     function stopAllScanning() {
         if (liveQuaggaRunning) { try { Quagga.stop(); } catch(e){} liveQuaggaRunning = false; }
         if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
-        hideBanner();
     }
 
     // スキャナUIを閉じる専用関数（toggleScannerと状態を共有しない）
@@ -223,7 +231,6 @@
     function setScanMode(mode) {
         currentScanMode = mode;
         stopAllScanning();
-        hideBanner();
 
         document.getElementById('modeLiveBtn').classList.toggle('active', mode === 'live');
         document.getElementById('modePhotoBtn').classList.toggle('active', mode === 'photo');
@@ -257,7 +264,7 @@
             Quagga.stop();
             liveQuaggaRunning = false;
             document.getElementById('liveScanStatus').textContent = '読み取り完了！';
-            showIsbnBanner(code);
+            showIsbnPopup(code);
         }
     });
 
@@ -285,7 +292,6 @@
         document.getElementById('capturePreview').src = dataUrl;
         document.getElementById('captureResultArea').classList.remove('hidden');
         document.getElementById('captureStatus').textContent = '解析中...';
-        hideBanner();
 
         // 静止画でQuagga解析
         Quagga.decodeSingle({
@@ -295,90 +301,129 @@
         }, (result) => {
             if (result && result.codeResult && result.codeResult.code && result.codeResult.code.startsWith('978')) {
                 document.getElementById('captureStatus').textContent = '読み取り完了！';
-                showIsbnBanner(result.codeResult.code);
+                showIsbnPopup(result.codeResult.code);
             } else {
                 document.getElementById('captureStatus').textContent = '⚠️ バーコードを検出できませんでした。';
             }
         });
     }
 
-    // ========== ISBN確認バナー ==========
-    function showIsbnBanner(isbn) {
+    // ========== ISBN確認ポップアップ ==========
+    function showIsbnPopup(isbn) {
         pendingIsbn = isbn;
-        document.getElementById('isbnDisplayValue').textContent = isbn;
-        document.getElementById('isbnConfirmBanner').classList.remove('hidden');
+        // innerHTML書き換え後でも確実に表示できるよう毎回構造を復元
+        document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
+            <div style="text-align:center; padding:8px 0;">
+                <div style="font-size:32px; margin-bottom:8px;">📌</div>
+                <div style="font-size:14px; color:#555; margin-bottom:4px;">読み取ったISBN</div>
+                <div style="font-size:28px; font-weight:bold; letter-spacing:3px; font-family:monospace; color:#1a73e8; margin:12px 0 20px;">${isbn}</div>
+                <div style="font-size:13px; color:#888; margin-bottom:20px;">正しければ検索を実行してください</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-confirm" style="font-size:15px;" onclick="searchByConfirmedIsbn()">🔍 この番号で検索</button>
+                    <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
+                </div>
+            </div>`;
+        document.getElementById('isbnPopup').style.display = 'flex';
     }
 
-    function hideBanner() {
+    function closeIsbnPopup() {
+        document.getElementById('isbnPopup').style.display = 'none';
         pendingIsbn = null;
-        document.getElementById('isbnConfirmBanner').classList.add('hidden');
+        retryScanning();
+    }
+
+    function showSearchingOverlay(isbn) {
+        document.getElementById('searchingIsbnLabel').textContent = `ISBN: ${isbn}`;
+        document.getElementById('searchingMsg').textContent = '書籍情報を検索中...';
+        document.getElementById('searchingOverlay').style.display = 'flex';
+    }
+
+    function hideSearchingOverlay() {
+        document.getElementById('searchingOverlay').style.display = 'none';
     }
 
     async function searchByConfirmedIsbn() {
         if (!pendingIsbn) return;
         const isbn = pendingIsbn;
-        hideBanner();
-        document.getElementById('isbnConfirmBanner').classList.remove('hidden');
-        document.getElementById('isbnConfirmBanner').innerHTML = `<div style="text-align:center; padding:10px; color:#555;">🔍 ISBN ${isbn} を検索中...</div>`;
+
+        // ポップアップを閉じて検索中オーバーレイを表示
+        document.getElementById('isbnPopup').style.display = 'none';
+        showSearchingOverlay(isbn);
 
         try {
-            // ① Google Books APIで検索
-            let bookData = null;
             const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
             const gJson = await gRes.json();
+            hideSearchingOverlay();
 
             if (gJson.items && gJson.items.length > 0) {
                 const info = gJson.items[0].volumeInfo;
-                bookData = {
+                pendingIsbn = null;
+                closeScanner();
+                openModal({
                     title: info.title || "",
                     author: info.authors?.[0] || "",
                     img: info.imageLinks?.thumbnail || "",
-                    isbn: isbn
-                };
-            } else {
-                // ② Google Booksになければ国立国会図書館APIで検索（フォールバック）
-                const ndlRes = await fetch(`https://iss.ndl.go.jp/api/opensearch?isbn=${isbn}&cnt=1`);
-                const ndlText = await ndlRes.text();
-                const parser = new DOMParser();
-                const ndlDoc = parser.parseFromString(ndlText, "application/xml");
-                const item = ndlDoc.querySelector("item");
-                if (item) {
-                    const title = item.querySelector("title")?.textContent || "";
-                    const author = item.querySelector("author")?.textContent || "";
-                    bookData = { title, author, img: "", isbn };
-                }
-            }
-
-            hideBanner(); // 「検索中」表示を消す
-
-            if (bookData) {
-                closeScanner();
-                openModal({
-                    ...bookData,
+                    isbn: isbn,
                     date: new Date().toISOString().split('T')[0],
-                    genre: "",
-                    comment: ""
+                    genre: "", comment: ""
                 }, -1);
             } else {
-                // 両APIで見つからなかった
-                showIsbnBanner(isbn); // バナーを再表示してISBNを保持
-                const goManual = confirm(`ISBN: ${isbn} で検索しましたが、どのデータベースにも見つかりませんでした。\n手動で情報を入力しますか？`);
-                if (goManual) {
-                    closeScanner();
-                    openModal({ title: "", author: "", date: new Date().toISOString().split('T')[0], img: "", genre: "", comment: "", isbn: isbn }, -1);
-                } else {
-                    retryScanning();
-                }
+                // 見つからなかった → ISBNを保持したまま手動入力か再試行か選ばせる
+                pendingIsbn = isbn;
+                showNotFoundPopup(isbn);
             }
         } catch(e) {
-            hideBanner();
-            alert('通信エラーが発生しました。ネットワーク接続を確認してください。');
-            showIsbnBanner(isbn);
+            hideSearchingOverlay();
+            pendingIsbn = isbn;
+            showErrorPopup(isbn);
         }
     }
 
+    function showNotFoundPopup(isbn) {
+        // 「見つからない」ケースはisbnPopupのメッセージを変えて再利用
+        document.getElementById('isbnPopupValue').textContent = isbn;
+        document.getElementById('isbnPopup').style.display = 'flex';
+        document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
+            <div style="text-align:center; padding:8px 0;">
+                <div style="font-size:32px; margin-bottom:8px;">📭</div>
+                <div style="font-size:15px; font-weight:bold; margin-bottom:6px;">書籍が見つかりませんでした</div>
+                <div style="font-size:13px; color:#555; margin-bottom:4px;">ISBN: <span style="font-family:monospace; font-weight:bold; color:#1a73e8;">${isbn}</span></div>
+                <div style="font-size:12px; color:#999; margin-bottom:20px;">Google Booksにデータがない本の可能性があります</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-confirm" style="font-size:14px;" onclick="manualEntryWithIsbn('${isbn}')">✍️ 手動で入力</button>
+                    <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
+                </div>
+            </div>`;
+    }
+
+    function showErrorPopup(isbn) {
+        document.getElementById('isbnPopup').style.display = 'flex';
+        document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
+            <div style="text-align:center; padding:8px 0;">
+                <div style="font-size:32px; margin-bottom:8px;">⚠️</div>
+                <div style="font-size:15px; font-weight:bold; margin-bottom:6px;">通信エラー</div>
+                <div style="font-size:13px; color:#555; margin-bottom:20px;">ネットワーク接続を確認してから再試行してください</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-confirm" onclick="retryIsbnSearch('${isbn}')">再試行</button>
+                    <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
+                </div>
+            </div>`;
+    }
+
+    function retryIsbnSearch(isbn) {
+        pendingIsbn = isbn;
+        showIsbnPopup(isbn);
+        searchByConfirmedIsbn();
+    }
+
+    function manualEntryWithIsbn(isbn) {
+        document.getElementById('isbnPopup').style.display = 'none';
+        pendingIsbn = null;
+        closeScanner();
+        openModal({ title: "", author: "", date: new Date().toISOString().split('T')[0], img: "", genre: "", comment: "", isbn: isbn }, -1);
+    }
+
     function retryScanning() {
-        hideBanner();
         if (currentScanMode === 'live') {
             startLiveScanner();
         } else {
