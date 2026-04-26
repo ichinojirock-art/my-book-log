@@ -135,7 +135,7 @@
         <div class="modal-content" style="text-align:center; padding:28px 20px;">
             <div style="font-size:32px; margin-bottom:8px;">📌</div>
             <div style="font-size:14px; color:#555; margin-bottom:4px;">読み取ったISBN</div>
-            <div id="isbnPopupValue" style="font-size:28px; font-weight:bold; letter-spacing:3px; font-family:monospace; color:#1a73e8; margin:12px 0 20px;"></div>
+            <div style="font-size:28px; font-weight:bold; letter-spacing:3px; font-family:monospace; color:#1a73e8; margin:12px 0 20px;"></div>
             <div style="font-size:13px; color:#888; margin-bottom:20px;">正しければ検索を実行してください</div>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-confirm" style="font-size:15px;" onclick="searchByConfirmedIsbn()">🔍 この番号で検索</button>
@@ -380,9 +380,6 @@
     }
 
     function showNotFoundPopup(isbn) {
-        // 「見つからない」ケースはisbnPopupのメッセージを変えて再利用
-        document.getElementById('isbnPopupValue').textContent = isbn;
-        document.getElementById('isbnPopup').style.display = 'flex';
         document.getElementById('isbnPopup').querySelector('.modal-content').innerHTML = `
             <div style="text-align:center; padding:8px 0;">
                 <div style="font-size:32px; margin-bottom:8px;">📭</div>
@@ -394,6 +391,7 @@
                     <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
                 </div>
             </div>`;
+        document.getElementById('isbnPopup').style.display = 'flex';
     }
 
     function showErrorPopup(isbn) {
