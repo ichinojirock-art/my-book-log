@@ -2,92 +2,140 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Book Log Ultra V7</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Book Log Ultra V12</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
         .hidden { display: none !important; }
         
-        .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; }
-        .btn { padding: 10px 5px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 44px; }
+        .btn { padding: 10px 5px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 48px; }
         .btn-main { background: var(--primary); color: white; }
         .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); }
         .btn-export { border-color: var(--success); color: var(--success); }
         
-        .search-box { display: flex; gap: 5px; align-items: flex-start; }
-        .btn-search { background: #5f6368; color: white; flex: none; width: 60px; height: 42px; margin-top: 5px; }
+        .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
 
-        .search-results { 
-            background: #ffffff; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            max-height: 320px; 
-            overflow-y: auto; 
-            display: none; 
-            border: 2px solid var(--primary); 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 12px; }
-        .search-item img { width: 45px; height: auto; border-radius: 3px; flex-shrink: 0; }
-        .search-item:hover { background: #f1f3f4; }
-        .hl { color: var(--primary); font-weight: bold; }
+        /* スキャナUI */
+        #scannerArea { background: black; border-radius: 12px; overflow: hidden; margin-bottom: 15px; position: relative; }
+        #interactive { width: 100%; }
+        #interactive video { width: 100%; display: block; }
+        #interactive canvas { display: none; }
 
-        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
-        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
+        /* カメラモード切替 */
+        .scan-mode-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+        .scan-mode-btn { flex: 1; padding: 8px; border: 1px solid var(--primary); border-radius: 8px; background: white; color: var(--primary); font-weight: bold; font-size: 13px; cursor: pointer; }
+        .scan-mode-btn.active { background: var(--primary); color: white; }
 
+        /* 撮影ボタン */
+        #captureBtn { width: 64px; height: 64px; border-radius: 50%; background: white; border: 4px solid var(--primary); position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 10; }
+
+        /* 撮影した画像プレビュー */
+        #capturePreview { width: 100%; border-radius: 8px; display: block; }
+
+        /* ISBN確認バナー */
+        #isbnConfirmBanner { background: #fff3cd; border: 1px solid #ffc107; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+        #isbnConfirmBanner .isbn-value { font-size: 22px; font-weight: bold; letter-spacing: 2px; text-align: center; margin: 8px 0; color: #333; font-family: monospace; }
+        #isbnConfirmBanner .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+
+        /* カレンダー */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        .calendar-day { background: white; min-height: 60px; padding: 4px 2px; font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
+        .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; padding: 2px 4px; margin-top: 4px; width: fit-content; }
+
+        /* モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; width: 90%; max-width: 400px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .modal-footer { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-confirm { background: var(--success); color: white; flex: 1; padding: 12px; height: 50px; }
-        .btn-cancel { background: var(--danger); color: white; flex: 1; padding: 12px; height: 50px; }
+        .modal-content { background: white; padding: 20px; width: 92%; max-width: 400px; border-radius: 16px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
+        .modal-footer { display: flex; gap: 12px; margin-top: 20px; }
+        .btn-confirm { background: var(--success); color: white; min-height: 54px; flex: 1; }
+        .btn-cancel { background: var(--danger); color: white; min-height: 54px; flex: 1; }
 
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #ddd; }
-        .calendar-day { background: white; min-height: 50px; padding: 2px; font-size: 11px; text-align: center; cursor: pointer; }
-        .calendar-day.active { background: #e8f0fe; border: 2px solid var(--primary); }
-        .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; margin-top: 2px; }
+        input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+
+        .search-box { display: flex; gap: 8px; align-items: flex-start; }
+        .btn-search { background: #5f6368; color: white; flex: none; width: 70px; height: 44px; margin-top: 8px; border-radius: 8px; border: none; font-weight: bold; }
+
+        .search-results { background: #ffffff; border-radius: 8px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; display: none; border: 2px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 13px; }
+        .search-item img { width: 40px; height: auto; border-radius: 2px; }
+        .search-item:hover { background: #f8f9fa; }
+        .search-nomatch { color: #888; font-size: 12px; font-style: italic; padding: 2px 10px 8px; }
 
         .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-        .book-card { background: white; padding: 12px; border-radius: 10px; border: 1px solid #eee; display: flex; flex-direction: column; }
-        .book-card img { width: 100%; border-radius: 6px; margin-bottom: 8px; }
-        .book-info { font-size: 12px; flex-grow: 1; }
-        
-        .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .table-view { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
-        .table-view td { padding: 8px; border-bottom: 1px solid #eee; }
-        .table-thumb { width: 40px; border-radius: 3px; }
+        .book-card { background: white; padding: 12px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .book-card img { width: 100%; border-radius: 8px; margin-bottom: 8px; }
+        .book-info { font-size: 13px; line-height: 1.4; flex-grow: 1; }
+        .book-meta { font-size: 11px; color: #666; margin: 4px 0; }
+        .book-comment { font-size: 12px; color: #444; border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; font-style: italic; }
+        .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+
+        .status-msg { font-size: 13px; color: #666; padding: 6px 0; text-align: center; }
     </style>
 </head>
 <body>
 
     <h1>📚 My Book Log</h1>
 
-    <div id="mainControls">
-        <div class="main-action-grid">
-            <button id="scanToggleBtn" class="btn btn-main" onclick="toggleScanner()">📷 スキャン</button>
-            <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
-            <button class="btn btn-sub btn-export" onclick="exportToCSV()">📊 CSV出力</button>
+    <div class="main-action-grid">
+        <button id="scanToggleBtn" class="btn btn-main" onclick="toggleScanner()">📷 スキャン</button>
+        <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
+        <button class="btn btn-sub btn-export" onclick="exportToCSV()">📊 CSV</button>
+    </div>
+
+    <!-- スキャナエリア -->
+    <div id="scannerArea" class="hidden">
+        <!-- モード切替タブ -->
+        <div class="scan-mode-bar">
+            <button id="modeLiveBtn" class="scan-mode-btn active" onclick="setScanMode('live')">🎥 リアルタイム</button>
+            <button id="modePhotoBtn" class="scan-mode-btn" onclick="setScanMode('photo')">📸 撮影して読取</button>
         </div>
-        
-        <div id="interactive" class="viewport hidden"></div>
-        
-        <div class="card">
-            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-                <button class="btn btn-sub" onclick="setView('card')">カード</button>
-                <button class="btn btn-sub" onclick="setView('table')">表</button>
-                <button class="btn btn-sub" onclick="setView('calendar')">カレンダー</button>
+
+        <!-- リアルタイムモード -->
+        <div id="liveMode">
+            <div id="interactive" style="position:relative; background:black; border-radius:10px; overflow:hidden;"></div>
+            <p class="status-msg" id="liveScanStatus">バーコードをカメラに向けてください</p>
+        </div>
+
+        <!-- 撮影モード -->
+        <div id="photoMode" class="hidden">
+            <div style="position:relative; background:black; border-radius:10px; overflow:hidden; min-height:220px;">
+                <video id="photoVideo" style="width:100%; display:block;" autoplay playsinline></video>
+                <button id="captureBtn" onclick="capturePhoto()">📸</button>
             </div>
-            <select id="genreFilter" onchange="render()"><option value="all">すべてのジャンル</option></select>
+            <canvas id="captureCanvas" style="display:none;"></canvas>
+            <div id="captureResultArea" class="hidden" style="margin-top:10px;">
+                <img id="capturePreview" alt="撮影画像">
+                <p class="status-msg" id="captureStatus">解析中...</p>
+            </div>
+        </div>
+
+        <!-- ISBN確認バナー（両モード共通） -->
+        <div id="isbnConfirmBanner" class="hidden">
+            <div style="font-size:13px; color:#856404;">📌 読み取ったISBN — 正しければ「この番号で検索」を押してください</div>
+            <div class="isbn-value" id="isbnDisplayValue">—</div>
+            <div class="btn-row">
+                <button class="btn btn-main" style="min-height:44px;" onclick="searchByConfirmedIsbn()">この番号で検索</button>
+                <button class="btn btn-sub" style="min-height:44px;" onclick="retryScanning()">やり直す</button>
+            </div>
         </div>
     </div>
 
+    <div class="card">
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <button class="btn btn-sub" onclick="setView('card')">カード</button>
+            <button class="btn btn-sub" onclick="setView('table')">表</button>
+            <button class="btn btn-sub" onclick="setView('calendar')">カレンダー</button>
+        </div>
+        <select id="genreFilter" onchange="render()"><option value="all">すべてのジャンル</option></select>
+    </div>
+
     <div id="calendarArea" class="card hidden">
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <button class="btn btn-sub" style="flex:none; padding:5px 15px;" onclick="changeMonth(-1)">◀</button>
-            <span id="currentMonthLabel" style="font-weight:bold"></span>
-            <button class="btn btn-sub" style="flex:none; padding:5px 15px;" onclick="changeMonth(1)">▶</button>
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(-1)">◀</button>
+            <span id="currentMonthLabel" style="font-weight:bold; font-size:16px;"></span>
+            <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(1)">▶</button>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
     </div>
@@ -96,19 +144,22 @@
 
     <div id="editModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin:0 0 10px">書籍情報の登録/編集</h3>
-            <label>タイトル（検索キーワード）</label>
+            <h3 style="margin-top:0; text-align:center;">書籍情報の登録</h3>
+            <label>タイトル（複数ワード可）</label>
             <div class="search-box">
-                <input type="text" id="fTitle" placeholder="作品名、巻数、著者名など...">
+                <input type="text" id="fTitle" placeholder="作品名、著者名など...">
                 <button class="btn btn-search" onclick="searchBooks()">検索</button>
             </div>
             <div id="searchResults" class="search-results"></div>
+            
             <label>著者名</label><input type="text" id="fAuthor">
             <label>記録日</label><input type="date" id="fDate">
             <label>ジャンル</label>
-            <input type="text" id="fGenre" list="genreOptions" placeholder="選択または入力">
+            <input type="text" id="fGenre" list="genreOptions">
             <datalist id="genreOptions"></datalist>
-            <label>コメント</label><textarea id="fComment" rows="3"></textarea>
+            <label>コメント</label><textarea id="fComment" rows="2"></textarea>
+            <input type="hidden" id="fIsbn">
+            
             <div class="modal-footer">
                 <button class="btn btn-confirm" onclick="saveData()">保存</button>
                 <button class="btn btn-cancel" onclick="closeModal()">中止</button>
@@ -118,53 +169,198 @@
 
 <script>
     let books = JSON.parse(localStorage.getItem('myBooks')) || [];
-    let genres = JSON.parse(localStorage.getItem('myGenres')) || ["恋愛", "バトル", "ミステリ", "その他"];
+    let genres = JSON.parse(localStorage.getItem('myGenres')) || ["未分類"];
     let currentView = 'card';
     let editingIndex = -1; 
     let calDate = new Date();
     let filterDate = null;
 
-    function normalizeText(text) {
-        return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?]/g, "");
+    // スキャナ状態
+    let scannerOpen = false;
+    let currentScanMode = 'live'; // 'live' | 'photo'
+    let liveQuaggaRunning = false;
+    let photoStream = null;
+    let pendingIsbn = null; // 確認待ちのISBN
+
+    // 正規化関数：全角半角・記号・空白を無視して比較
+    function normalizeText(text) { 
+        return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?・]/g, ""); 
     }
 
+    // ========== スキャナ全体の開閉 ==========
     function toggleScanner() {
+        const area = document.getElementById('scannerArea');
+        if (!scannerOpen) {
+            scannerOpen = true;
+            area.classList.remove('hidden');
+            document.getElementById('scanToggleBtn').innerText = "⏹ 停止";
+            setScanMode(currentScanMode);
+        } else {
+            stopAllScanning();
+            area.classList.add('hidden');
+            scannerOpen = false;
+            document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
+        }
+    }
+
+    function stopAllScanning() {
+        if (liveQuaggaRunning) { try { Quagga.stop(); } catch(e){} liveQuaggaRunning = false; }
+        if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
+        hideBanner();
+    }
+
+    // ========== モード切替 ==========
+    function setScanMode(mode) {
+        currentScanMode = mode;
+        stopAllScanning();
+        hideBanner();
+
+        document.getElementById('modeLiveBtn').classList.toggle('active', mode === 'live');
+        document.getElementById('modePhotoBtn').classList.toggle('active', mode === 'photo');
+        document.getElementById('liveMode').classList.toggle('hidden', mode !== 'live');
+        document.getElementById('photoMode').classList.toggle('hidden', mode !== 'photo');
+        document.getElementById('captureResultArea').classList.add('hidden');
+
+        if (mode === 'live') startLiveScanner();
+        else startPhotoCamera();
+    }
+
+    // ========== リアルタイムスキャン ==========
+    function startLiveScanner() {
         const el = document.getElementById('interactive');
-        if (el.classList.contains('hidden')) startScanner(); else stopScanner();
-    }
-
-    function startScanner() {
-        document.getElementById('interactive').classList.remove('hidden');
-        document.getElementById('scanToggleBtn').innerText = "⏹ 停止";
+        document.getElementById('liveScanStatus').textContent = 'カメラを起動中...';
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
+            inputStream: { name: "Live", type: "LiveStream", target: el, constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader"] }
-        }, (err) => { if(!err) Quagga.start(); });
+        }, (err) => {
+            if (err) { document.getElementById('liveScanStatus').textContent = 'カメラを起動できませんでした'; return; }
+            Quagga.start();
+            liveQuaggaRunning = true;
+            document.getElementById('liveScanStatus').textContent = 'バーコードをカメラに向けてください';
+        });
     }
 
-    function stopScanner() {
-        Quagga.stop();
-        document.getElementById('interactive').classList.add('hidden');
-        document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
-    }
-
-    Quagga.onDetected(async (data) => {
+    Quagga.onDetected((data) => {
+        if (!liveQuaggaRunning) return;
         const code = data.codeResult.code;
-        if (code.startsWith('978')) {
+        if (code && code.startsWith('978')) {
             Quagga.stop();
-            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${code}`);
-            const json = await res.json();
-            if (json.items) {
-                const info = json.items[0].volumeInfo;
-                openModal({ title: info.title, author: info.authors?.[0] || "", date: new Date().toISOString().split('T')[0], img: info.imageLinks?.thumbnail || "", genre: "", comment: "" }, -1);
-            } else { alert("見つかりませんでした"); startScanner(); }
+            liveQuaggaRunning = false;
+            document.getElementById('liveScanStatus').textContent = '読み取り完了！';
+            showIsbnBanner(code);
         }
     });
 
+    // ========== 撮影モード ==========
+    async function startPhotoCamera() {
+        try {
+            photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('photoVideo').srcObject = photoStream;
+        } catch(e) {
+            alert('カメラへのアクセスができませんでした');
+        }
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('photoVideo');
+        const canvas = document.getElementById('captureCanvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        // プレビュー表示
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        document.getElementById('capturePreview').src = dataUrl;
+        document.getElementById('captureResultArea').classList.remove('hidden');
+        document.getElementById('captureStatus').textContent = '解析中...';
+        hideBanner();
+
+        // 静止画でQuagga解析
+        Quagga.decodeSingle({
+            decoder: { readers: ["ean_reader"] },
+            locate: true,
+            src: dataUrl
+        }, (result) => {
+            if (result && result.codeResult && result.codeResult.code && result.codeResult.code.startsWith('978')) {
+                document.getElementById('captureStatus').textContent = '読み取り完了！';
+                showIsbnBanner(result.codeResult.code);
+            } else {
+                document.getElementById('captureStatus').textContent = '⚠️ バーコードを検出できませんでした。もう一度撮影してください。';
+            }
+        });
+    }
+
+    // ========== ISBN確認バナー ==========
+    function showIsbnBanner(isbn) {
+        pendingIsbn = isbn;
+        document.getElementById('isbnDisplayValue').textContent = isbn;
+        document.getElementById('isbnConfirmBanner').classList.remove('hidden');
+    }
+
+    function hideBanner() {
+        pendingIsbn = null;
+        document.getElementById('isbnConfirmBanner').classList.add('hidden');
+    }
+
+    async function searchByConfirmedIsbn() {
+        if (!pendingIsbn) return;
+        const isbn = pendingIsbn;
+        hideBanner();
+
+        try {
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+            const json = await res.json();
+            if (json.items && json.items.length > 0) {
+                const info = json.items[0].volumeInfo;
+                stopAllScanning();
+                toggleScanner(); // スキャナを閉じる
+                openModal({
+                    title: info.title,
+                    author: info.authors?.[0] || "",
+                    date: new Date().toISOString().split('T')[0],
+                    img: info.imageLinks?.thumbnail || "",
+                    genre: "",
+                    comment: "",
+                    isbn: isbn
+                }, -1);
+            } else {
+                // 見つからなかった場合もISBNを保持して手動登録へ
+                const goManual = confirm(`ISBN: ${isbn} で検索しましたが、書籍が見つかりませんでした。\n手動で情報を入力しますか？`);
+                if (goManual) {
+                    stopAllScanning();
+                    toggleScanner();
+                    openModal({ title: "", author: "", date: new Date().toISOString().split('T')[0], img: "", genre: "", comment: "", isbn: isbn }, -1);
+                } else {
+                    retryScanning();
+                }
+            }
+        } catch(e) {
+            alert('通信エラーが発生しました。ネットワーク接続を確認してください。');
+            retryScanning();
+        }
+    }
+
+    function retryScanning() {
+        hideBanner();
+        if (currentScanMode === 'live') {
+            startLiveScanner();
+        } else {
+            document.getElementById('captureResultArea').classList.add('hidden');
+            document.getElementById('captureStatus').textContent = '解析中...';
+        }
+    }
+
+    // ========== タイトル検索 ==========
+    // 【修正点】
+    //   元コード: filtered が空のとき json.items.slice(0,5) を表示していた
+    //            → タイトルに含まれないものまで表示されていた
+    //   修正後:  タイトルのみに対するマッチを優先し、
+    //            一致ゼロの場合は「見つかりませんでした」と表示する
+    //   追加:    タイトルマッチしないが著者・説明文にマッチするものは「関連候補」として区切って表示
     async function searchBooks() {
         const query = document.getElementById('fTitle').value.trim();
         const resArea = document.getElementById('searchResults');
-        if (!query) return alert("キーワードを入力してください");
+        if (!query) return;
 
         resArea.innerHTML = "<div style='padding:10px'>検索中...</div>";
         resArea.style.display = "block";
@@ -172,57 +368,70 @@
         const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
 
         try {
-            // maxResultsを最大値の40に設定して取得
             const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
             const json = await res.json();
             
-            let html = "";
-            if (json.items) {
-                // 部分一致によるフィルタリング（より柔軟に）
-                const filteredItems = json.items.filter(item => {
-                    const normalizedTitle = normalizeText(item.volumeInfo.title || "");
-                    const normalizedAuthor = normalizeText(item.volumeInfo.authors?.[0] || "");
-                    const combinedText = normalizedTitle + normalizedAuthor;
-                    return keywords.every(kw => combinedText.includes(kw));
-                });
+            if (!json.items || json.items.length === 0) {
+                resArea.innerHTML = "<div style='padding:10px'>見つかりませんでした</div>";
+                return;
+            }
 
-                if (filteredItems.length > 0) {
-                    html = filteredItems.map(item => {
-                        const info = item.volumeInfo;
-                        const img = info.imageLinks?.thumbnail || "";
-                        const author = info.authors?.[0] || "不明";
-                        const displayTitle = info.title.replace(new RegExp(`(${query.replace(/\s+/g, '|')})`, 'gi'), '<span class="hl">$1</span>');
-                        return `
-                            <div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${author.replace(/['"`]/g, "")}', '${img}')">
-                                <img src="${img || 'https://via.placeholder.com/40x60'}">
-                                <div style="overflow:hidden"><strong>${displayTitle}</strong><br><small>${author}</small></div>
-                            </div>`;
-                    }).join('');
-                } else {
-                    html = "<div style='padding:10px; font-size:11px; color:#666;'>絞り込み条件に合うものがありませんでした。キーワードを短くしてみてください。</div>";
-                    // 絞り込みで0件なら上位3件だけ参考として出す
-                    html += json.items.slice(0, 3).map(item => {
-                        const info = item.volumeInfo;
-                        const img = info.imageLinks?.thumbnail || "";
-                        return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${(info.authors?.[0] || "不明").replace(/['"`]/g, "")}', '${img}')">
-                            <img src="${img || 'https://via.placeholder.com/40x60'}">
-                            <div><strong>${info.title}</strong><br><small>候補</small></div>
-                        </div>`;
-                    }).join('');
-                }
-            } else { html = "<div style='padding:10px'>APIで本が見つかりませんでした</div>"; }
+            // タイトルに全キーワードが含まれるものを「完全一致候補」とする
+            const titleMatched = json.items.filter(item => {
+                const normTitle = normalizeText(item.volumeInfo.title);
+                return keywords.every(kw => normTitle.includes(kw));
+            });
+
+            // タイトル不一致でも著者名を含む場合は「関連候補」とする
+            const titleMatchedSet = new Set(titleMatched.map(i => i.id));
+            const relatedMatched = json.items.filter(item => {
+                if (titleMatchedSet.has(item.id)) return false;
+                const normAuthor = normalizeText(item.volumeInfo.authors?.[0] || "");
+                return keywords.every(kw => normAuthor.includes(kw));
+            });
+
+            if (titleMatched.length === 0 && relatedMatched.length === 0) {
+                resArea.innerHTML = "<div style='padding:10px'>タイトルに一致する書籍が見つかりませんでした<br><small style='color:#999'>（APIの検索結果に類似書籍が含まれますが、タイトルが一致しないため除外しています）</small></div>";
+                return;
+            }
+
+            const renderItem = item => {
+                const info = item.volumeInfo;
+                const img = info.imageLinks?.thumbnail || "";
+                const isbn = info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
+                const safeTitle = (info.title || "").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                const safeAuthor = (info.authors?.[0] || "不明").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                const safeImg = (img || "").replace(/'/g, "\\'");
+                return `<div class="search-item" onclick="selectSearchBook('${safeTitle}', '${safeAuthor}', '${safeImg}', '${isbn}')">
+                    <img src="${img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
+                    <div><strong>${info.title}</strong><br><small>${info.authors?.[0] || ""}</small></div>
+                </div>`;
+            };
+
+            let html = titleMatched.map(renderItem).join('');
+
+            if (relatedMatched.length > 0) {
+                html += `<div class="search-nomatch">── 著者名一致（タイトル不一致）──</div>`;
+                html += relatedMatched.slice(0, 5).map(renderItem).join('');
+            }
+
             resArea.innerHTML = html;
-        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>通信エラーが発生しました</div>"; }
+        } catch(e) {
+            resArea.innerHTML = "<div style='padding:10px'>エラーが発生しました</div>";
+        }
     }
 
-    function selectSearchBook(title, author, img) {
-        document.getElementById('fTitle').value = title;
-        document.getElementById('fAuthor').value = author;
-        document.getElementById('editModal').dataset.img = img;
+    function selectSearchBook(t, a, i, isbn) {
+        document.getElementById('fTitle').value = t; 
+        document.getElementById('fAuthor').value = a;
+        document.getElementById('fIsbn').value = isbn; 
+        document.getElementById('editModal').dataset.img = i;
         document.getElementById('searchResults').style.display = "none";
     }
 
-    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"" }, -1); }
+    function openManualEntry() {
+        openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"", isbn:"" }, -1);
+    }
 
     function openModal(data, index) {
         editingIndex = index;
@@ -231,9 +440,8 @@
         document.getElementById('fDate').value = data.date;
         document.getElementById('fGenre').value = data.genre;
         document.getElementById('fComment').value = data.comment;
+        document.getElementById('fIsbn').value = data.isbn || "";
         document.getElementById('editModal').dataset.img = data.img;
-        document.getElementById('searchResults').innerHTML = "";
-        document.getElementById('searchResults').style.display = "none";
         document.getElementById('editModal').style.display = 'flex';
         updateGenreDatalist();
     }
@@ -241,39 +449,29 @@
     function closeModal() { document.getElementById('editModal').style.display = 'none'; }
 
     function saveData() {
-        const genre = document.getElementById('fGenre').value;
-        if (genre && !genres.includes(genre)) {
-            genres.push(genre);
-            localStorage.setItem('myGenres', JSON.stringify(genres));
-        }
+        const genre = document.getElementById('fGenre').value || "未分類";
+        if (!genres.includes(genre)) { genres.push(genre); localStorage.setItem('myGenres', JSON.stringify(genres)); }
         const data = {
             title: document.getElementById('fTitle').value,
             author: document.getElementById('fAuthor').value,
             date: document.getElementById('fDate').value,
-            genre: genre || "未分類",
+            genre: genre,
             comment: document.getElementById('fComment').value,
-            img: document.getElementById('editModal').dataset.img || ""
+            img: document.getElementById('editModal').dataset.img || "",
+            isbn: document.getElementById('fIsbn').value
         };
-        if (editingIndex > -1) books[editingIndex] = data;
-        else books.unshift(data);
+        if (editingIndex > -1) books[editingIndex] = data; else books.unshift(data);
         localStorage.setItem('myBooks', JSON.stringify(books));
-        closeModal();
-        stopScanner();
-        render();
+        closeModal(); render();
     }
 
-    function deleteBook(index) {
-        if (confirm("削除しますか？")) {
-            books.splice(index, 1);
-            localStorage.setItem('myBooks', JSON.stringify(books));
-            render();
-        }
+    function deleteBook(idx) {
+        if (confirm("本当に削除しますか？")) { books.splice(idx, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); }
     }
 
     function setView(v) { currentView = v; filterDate = null; render(); }
 
     function render() {
-        updateGenreFilter();
         const listEl = document.getElementById('listDisplay');
         const calArea = document.getElementById('calendarArea');
         const gFilter = document.getElementById('genreFilter').value;
@@ -283,30 +481,34 @@
         calArea.classList.toggle('hidden', currentView !== 'calendar');
         if (currentView === 'calendar') {
             const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
-            filtered = filterDate ? filtered.filter(b => b.date === filterDate) : filtered.filter(b => b.date.startsWith(prefix));
             renderCalendar();
+            filtered = filterDate ? filtered.filter(b => b.date === filterDate) : filtered.filter(b => b.date.startsWith(prefix));
         }
 
         if (currentView === 'table') {
-            listEl.innerHTML = `<table class="table-view">
-                ${filtered.map(b => `<tr>
-                    <td><img src="${b.img || 'https://via.placeholder.com/40x60'}" class="table-thumb"></td>
-                    <td><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
-                    <td style="text-align:right">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub">編</button>
-                        <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red;border:none">消</button>
+            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:13px; background:white; border-radius:12px; overflow:hidden;">
+                ${filtered.map(b => `<tr style="border-bottom:1px solid #eee">
+                    <td style="padding:10px 5px"><img src="${b.img || 'https://via.placeholder.com/40x60'}" style="width:45px; border-radius:4px;"></td>
+                    <td style="padding:10px 5px"><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
+                    <td style="text-align:right; padding:10px 5px">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sub" style="padding:4px 8px; min-height:30px; font-size:12px;">編集</button>
                     </td></tr>`).join('')}</table>`;
-        } else {
+        } else if (currentView !== 'calendar' || true) {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
                 <div class="book-card">
-                    <img src="${b.img || 'https://via.placeholder.com/150x200'}">
-                    <div class="book-info"><strong>${b.title}</strong><br><small>${b.author}</small></div>
-                    <div class="actions">
-                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub btn-sm">編集</button>
-                        <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub btn-sm" style="color:red;border-color:red">削除</button>
+                    <img src="${b.img || 'https://via.placeholder.com/150x200'}" onerror="this.src='https://via.placeholder.com/150x200'">
+                    <div class="book-info">
+                        <strong>${b.title}</strong><br><small>${b.author}</small>
+                        <div class="book-meta">${b.date} / ${b.genre}</div>
+                        ${b.comment ? `<div class="book-comment">${b.comment}</div>` : ''}
+                    </div>
+                    <div style="display:flex; gap:5px; margin-top:10px;">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub" style="min-height:36px; font-size:12px;">編集</button>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub" style="min-height:36px; font-size:12px; color:red; border-color:red;">削除</button>
                     </div>
                 </div>`).join('')}</div>`;
         }
+        updateGenreFilter();
     }
 
     function renderCalendar() {
@@ -315,16 +517,19 @@
         document.getElementById('currentMonthLabel').innerText = `${year}年 ${month + 1}月`;
         grid.innerHTML = "";
         const first = new Date(year, month, 1).getDay(); const last = new Date(year, month + 1, 0).getDate();
-        for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
+        for (let i = 0; i < first; i++) grid.innerHTML += `<div style="background:white"></div>`;
         for (let d = 1; d <= last; d++) {
             const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             const count = books.filter(b => b.date === dStr).length;
-            grid.innerHTML += `<div class="calendar-day ${filterDate===dStr?'active':''}" onclick="filterByDate('${dStr}')">${d}${count>0?`<span class="count-badge">${count}件</span>`:''}</div>`;
+            grid.innerHTML += `<div class="calendar-day ${filterDate===dStr?'active':''}" onclick="filterByDate('${dStr}')">
+                ${d}${count>0?`<span class="count-badge">${count}</span>`:''}
+            </div>`;
         }
     }
 
     function filterByDate(d) { filterDate = filterDate === d ? null : d; render(); }
     function changeMonth(n) { calDate.setMonth(calDate.getMonth() + n); filterDate = null; render(); }
+
     function updateGenreFilter() {
         const sel = document.getElementById('genreFilter');
         const current = sel.value;
@@ -335,11 +540,12 @@
         document.getElementById('genreOptions').innerHTML = genres.map(g => `<option value="${g}">${g}</option>`).join('');
     }
     function exportToCSV() {
-        let csv = "タイトル,著者,日付,ジャンル,コメント\n";
-        books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
+        let csv = "タイトル,著者,日付,ジャンル,コメント,ISBN\n";
+        books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment, b.isbn].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv;charset=utf-8;" });
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "books.csv"; a.click();
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `books_backup.csv`; a.click();
     }
+
     render();
 </script>
 </body>
