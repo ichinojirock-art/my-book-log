@@ -3,139 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Book Log</title>
+    <title>My Book Log Professional</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 20px; background: #f4f4f4; }
-        #interactive.viewport { width: 100%; height: 300px; background: #000; position: relative; }
-        #interactive.viewport canvas { position: absolute; top: 0; left: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f0f2f5; color: #333; }
+        h1 { text-align: center; color: #1a73e8; }
         
-        .controls { margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; }
-        .book-container { display: flex; flex-wrap: wrap; gap: 20px; }
-        
-        /* カード形式のスタイル */
-        .card-view .book-item { background: white; padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card-view img { width: 100%; height: auto; border-radius: 4px; }
-        
-        /* 表形式のスタイル */
-        .table-view { width: 100%; border-collapse: collapse; background: white; }
-        .table-view th, .table-view td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .table-view img { width: 50px; }
+        /* カメラエリア */
+        #interactive.viewport { width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; }
+        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
+        #interactive.viewport canvas { display: none; }
 
+        /* ボタン・コントロール */
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-scan { background: #1a73e8; color: white; }
+        .btn-toggle { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; }
+        
+        /* プレビュー画面（モーダル） */
+        #previewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; width: 85%; max-width: 400px; border-radius: 15px; }
+        .modal-content img { width: 80px; float: left; margin: 0 15px 10px 0; }
+        .modal-content input, .modal-content textarea, .modal-content select { width: 100%; margin-top: 10px; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-save { background: #28a745; color: white; flex: 1; }
+        .btn-cancel { background: #dc3545; color: white; flex: 1; }
+
+        /* リスト表示 */
+        .card-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        .book-item { background: white; padding: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 13px; }
+        .book-item img { width: 100%; border-radius: 5px; }
+        .table-view { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
+        .table-view th, .table-view td { border: 1px solid #ddd; padding: 8px; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <h1>📚 読書管理アプリ</h1>
-
-    <div id="interactive" class="viewport"></div>
+    <h1>📚 My Book Log</h1>
 
     <div class="controls">
-        <button onclick="toggleView('card')">カード形式</button>
-        <button onclick="toggleView('table')">表形式</button>
+        <button id="startScanBtn" class="btn-scan" onclick="startScanner()">📷 バーコードを読み取る</button>
+        <div id="interactive" class="viewport"></div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-toggle" onclick="toggleView('card')" style="flex:1">カード形式</button>
+            <button class="btn-toggle" onclick="toggleView('table')" style="flex:1">表形式</button>
+        </div>
         <select id="genreFilter" onchange="renderBooks()">
-            <option value="all">すべてのジャンル</option>
+            <option value="all">すべて表示</option>
             <option value="恋愛">恋愛</option>
             <option value="バトル">バトル</option>
             <option value="ミステリ">ミステリ</option>
         </select>
     </div>
 
-    <div id="bookListContainer" class="card-view">
+    <div id="previewModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0">登録プレビュー</h3>
+            <div id="previewData"></div>
+            <label>ジャンル:</label>
+            <select id="editGenre">
+                <option value="恋愛">恋愛</option>
+                <option value="バトル">バトル</option>
+                <option value="ミステリ">ミステリ</option>
+                <option value="その他">その他</option>
+            </select>
+            <label>コメント:</label>
+            <textarea id="editComment" placeholder="感想を入力..."></textarea>
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="saveBook()">登録する</button>
+                <button class="btn-cancel" onclick="closePreview()">中止</button>
+            </div>
         </div>
+    </div>
+
+    <div id="bookListContainer" class="card-view"></div>
 
 <script>
     let books = JSON.parse(localStorage.getItem('myBooks')) || [];
     let currentView = 'card';
+    let tempBook = null; // プレビュー中の一時データ
+    let isScanning = false;
 
-    // カメラ起動
-    Quagga.init({
-        inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive') },
-        decoder: { readers: ["ean_reader"] } // ISBNはJANコード（EAN）形式
-    }, (err) => {
-        if (err) return console.error(err);
-        Quagga.start();
-    });
+    // スキャナー起動
+    function startScanner() {
+        if (isScanning) return;
+        document.getElementById('interactive').style.display = 'block';
+        document.getElementById('startScanBtn').innerText = "読み取り中...";
+        isScanning = true;
 
-    // バーコード検知時の処理
+        Quagga.init({
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive') },
+            decoder: { readers: ["ean_reader"] }
+        }, (err) => {
+            if (err) return console.error(err);
+            Quagga.start();
+        });
+    }
+
+    // バーコード検知
     Quagga.onDetected(async (data) => {
         const code = data.codeResult.code;
-        if (code.startsWith('978')) { // ISBNの場合のみ反応
-            Quagga.stop(); // 二重読み込み防止
+        if (code.startsWith('978')) {
+            Quagga.stop(); // 検出した瞬間に止める（二重登録防止）
             await fetchBookInfo(code);
-            Quagga.start();
         }
     });
 
-    // Google Books APIから情報を取得
+    // 書籍情報取得
     async function fetchBookInfo(isbn) {
         const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
         const data = await res.json();
+        
         if (data.items) {
             const info = data.items[0].volumeInfo;
-            const genre = prompt("ジャンルを入力（恋愛, バトル, ミステリなど）", "ミステリ");
-            const comment = prompt("コメントを入力", "");
-            
-            const newBook = {
+            tempBook = {
                 title: info.title,
                 author: info.authors ? info.authors[0] : "不明",
+                publisher: info.publisher || "不明",
                 img: info.imageLinks ? info.imageLinks.thumbnail : "",
-                date: new Date().toISOString().split('T')[0],
-                genre: genre,
-                comment: comment
+                date: new Date().toLocaleDateString('ja-JP'), // 現在の日付
             };
-            
-            books.push(newBook);
-            localStorage.setItem('myBooks', JSON.stringify(books));
-            renderBooks();
+            showPreview();
+        } else {
+            alert("本が見つかりませんでした。");
+            startScanner(); // 再開
         }
     }
 
-    // 表示の切り替え
+    function showPreview() {
+        document.getElementById('interactive').style.display = 'none';
+        document.getElementById('startScanBtn').innerText = "📷 バーコードを読み取る";
+        isScanning = false;
+
+        const previewHtml = `
+            <img src="${tempBook.img}">
+            <input type="text" id="editTitle" value="${tempBook.title}">
+            <input type="text" id="editAuthor" value="${tempBook.author}">
+            <p><small>出版社: ${tempBook.publisher} / 記録日: ${tempBook.date}</small></p>
+        `;
+        document.getElementById('previewData').innerHTML = previewHtml;
+        document.getElementById('previewModal').style.display = 'flex';
+    }
+
+    function saveBook() {
+        // 修正された値を反映
+        tempBook.title = document.getElementById('editTitle').value;
+        tempBook.author = document.getElementById('editAuthor').value;
+        tempBook.genre = document.getElementById('editGenre').value;
+        tempBook.comment = document.getElementById('editComment').value;
+
+        books.unshift(tempBook); // 新しい順に追加
+        localStorage.setItem('myBooks', JSON.stringify(books));
+        
+        closePreview();
+        renderBooks();
+    }
+
+    function closePreview() {
+        document.getElementById('previewModal').style.display = 'none';
+        document.getElementById('editComment').value = "";
+        tempBook = null;
+    }
+
     function toggleView(mode) {
         currentView = mode;
         renderBooks();
     }
 
-    // リストの描画
     function renderBooks() {
         const container = document.getElementById('bookListContainer');
         const filter = document.getElementById('genreFilter').value;
         const filteredBooks = filter === 'all' ? books : books.filter(b => b.genre === filter);
 
         if (currentView === 'card') {
-            container.className = 'card-view book-container';
+            container.className = 'card-view';
             container.innerHTML = filteredBooks.map(b => `
                 <div class="book-item">
                     <img src="${b.img}">
-                    <h3>${b.title}</h3>
-                    <p>${b.author}</p>
-                    <small>${b.date} / ${b.genre}</small>
-                    <p>${b.comment}</p>
+                    <strong>${b.title}</strong><br>
+                    <small>${b.author}</small><br>
+                    <span style="font-size:10px; color:#666;">${b.date} [${b.genre}]</span>
+                    <p style="margin:5px 0 0; font-size:11px;">${b.comment}</p>
                 </div>
             `).join('');
         } else {
             container.className = 'table-view-container';
             container.innerHTML = `
                 <table class="table-view">
-                    <tr><th>表紙</th><th>作品名</th><th>著者</th><th>日付</th><th>ジャンル</th><th>コメント</th></tr>
+                    <tr><th>表紙</th><th>タイトル</th><th>著者</th><th>日付</th><th>ジャンル</th></tr>
                     ${filteredBooks.map(b => `
                         <tr>
-                            <td><img src="${b.img}"></td>
+                            <td><img src="${b.img}" style="width:40px"></td>
                             <td>${b.title}</td>
                             <td>${b.author}</td>
                             <td>${b.date}</td>
                             <td>${b.genre}</td>
-                            <td>${b.comment}</td>
                         </tr>
                     `).join('')}
                 </table>
             `;
         }
     }
-
-    // 初期描画
     renderBooks();
 </script>
 </body>
