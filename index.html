@@ -10,55 +10,35 @@
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
         .hidden { display: none !important; }
-        
         .btn { padding: 10px 5px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 48px; }
         .btn-main { background: var(--primary); color: white; }
         .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); }
         .btn-export { border-color: var(--success); color: var(--success); }
-        
         .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-
-        /* スキャナUI */
         #scannerArea { background: black; border-radius: 12px; overflow: hidden; margin-bottom: 15px; position: relative; }
         #interactive { width: 100%; }
         #interactive video { width: 100%; display: block; }
         #interactive canvas { display: none; }
-
-        /* カメラモード切替 */
-        .scan-mode-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+        .scan-mode-bar { display: flex; gap: 6px; margin-bottom: 10px; padding: 10px; }
         .scan-mode-btn { flex: 1; padding: 8px; border: 1px solid var(--primary); border-radius: 8px; background: white; color: var(--primary); font-weight: bold; font-size: 13px; cursor: pointer; }
         .scan-mode-btn.active { background: var(--primary); color: white; }
-
-        /* 撮影ボタン */
         #captureBtn { width: 64px; height: 64px; border-radius: 50%; background: white; border: 4px solid var(--primary); position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 10; }
-
-        /* 撮影した画像プレビュー */
-        #capturePreview { width: 100%; border-radius: 8px; display: block; }
-
         .status-msg { font-size: 13px; color: #666; padding: 6px 0; text-align: center; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ccc; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
         .calendar-day { background: white; height: 38px; padding: 3px 1px; font-size: 11px; text-align: center; display: flex; flex-direction: column; align-items: center; cursor: pointer; line-height: 1.3; box-sizing: border-box; }
         .calendar-day.active { background: #e8f0fe; font-weight: bold; box-shadow: inset 0 0 0 2px var(--primary); }
         .count-badge { display: block; background: var(--primary); color: white; border-radius: 8px; font-size: 9px; padding: 1px 4px; margin-top: 2px; width: fit-content; }
-
-        /* モーダル */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; width: 92%; max-width: 400px; border-radius: 16px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
         .modal-footer { display: flex; gap: 12px; margin-top: 20px; }
         .btn-confirm { background: var(--success); color: white; min-height: 54px; flex: 1; }
         .btn-cancel { background: var(--danger); color: white; min-height: 54px; flex: 1; }
-
         input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
-
         .search-box { display: flex; gap: 8px; align-items: flex-start; }
         .btn-search { background: #5f6368; color: white; flex: none; width: 70px; height: 44px; margin-top: 8px; border-radius: 8px; border: none; font-weight: bold; }
-
         .search-results { background: #ffffff; border-radius: 8px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; display: none; border: 2px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 13px; }
         .search-item img { width: 40px; height: auto; border-radius: 2px; }
-        .search-item:hover { background: #f8f9fa; }
-        .search-nomatch { color: #888; font-size: 12px; font-style: italic; padding: 2px 10px 8px; }
-
         .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
         .book-card { background: white; padding: 12px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
         .book-card img { width: 100%; border-radius: 8px; margin-bottom: 8px; }
@@ -71,55 +51,15 @@
 <body>
 
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <h1 style="margin:0; font-size:20px;">📚 ホンログ <span style="font-size:12px; font-weight:normal; color:#888;">My Book Log</span></h1>
-        <button onclick="document.getElementById('helpModal').style.display='flex'"
-                style="background:none; border:1.5px solid #1a73e8; border-radius:50%; width:26px; height:26px; font-size:13px; cursor:pointer; color:#1a73e8; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
-                title="使い方・注意事項">?</button>
+        <h1 style="margin:0; font-size:20px;">📚 ホンログ</h1>
+        <button onclick="document.getElementById('helpModal').style.display='flex'" style="background:none; border:1.5px solid #1a73e8; border-radius:50%; width:26px; height:26px; font-size:13px; color:#1a73e8;">?</button>
     </div>
 
     <div id="helpModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content" style="max-width:480px; padding:24px 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h2 style="margin:0; font-size:18px;">📖 使い方・注意事項</h2>
-                <button onclick="document.getElementById('helpModal').style.display='none'"
-                        style="background:none; border:none; font-size:22px; cursor:pointer; color:#666; padding:0 4px;">✕</button>
-            </div>
-
-            <div style="font-size:13px; line-height:1.8; color:#333;">
-
-                <p style="margin:0 0 16px; padding:12px 14px; background:#e8f0fe; border-radius:10px; border-left:3px solid #1a73e8;">
-                <strong>📚 ホンログとは</strong><br>
-                読んだ本をかんたんに記録・管理するための個人向けWebツールです。バーコードスキャンやタイトル検索で書籍情報を自動取得し、読了日・ジャンル・コメントとあわせて保存できます。カード・表・カレンダーの3種類の表示で記録を振り返ることができます。</p>
-
-                <p style="margin:0 0 14px;"><strong>🔍 書籍検索について</strong><br>
-                書籍情報の検索には <strong>Google Books API</strong> を使用しています。無料で利用できますが、<strong>1日あたりの検索回数に上限</strong>があります。上限に達した場合はしばらく時間をおいてから再試行してください。上限は翌日にリセットされます。</p>
-
-                <p style="margin:0 0 14px;"><strong>📚 巻数・シリーズ情報について</strong><br>
-                巻数やシリーズ番号はISBNには含まれていません。タイトルに記載されている場合はそのまま表示されますが、記載がない場合は表示されません。また、巻数の表記は出版社・作品によってフォーマットがバラバラ（例：「1巻」「Vol.1」「第一巻」など）なため、統一的な扱いはできません。</p>
-
-                <p style="margin:0 0 14px;"><strong>📷 スキャン機能について</strong><br>
-                バーコードスキャンはカメラを使用します。ブラウザのカメラ権限設定・端末の種類・OSの状態によっては使用できない場合があります。また、<strong>スキャン精度はカメラの性能に依存</strong>します。うまく読み取れない場合は「撮影して読取」モードに切り替えるか、タイトルで手動検索してください。</p>
-
-                <p style="margin:0 0 14px;"><strong>💾 データの保存場所について</strong><br>
-                登録した書籍情報は<strong>このブラウザのローカルストレージ</strong>に保存されます。そのため、別のブラウザやデバイスで開いても情報は表示されません。裏を返せば、<strong>登録内容は自分のブラウザ内にしか存在せず、外部に送信されることは一切ありません</strong>ので、プライバシーの面では安心してお使いいただけます。</p>
-
-                <p style="margin:0 0 14px;"><strong>🖼️ 書影データについて</strong><br>
-                表示される書影（表紙画像）は <strong>Google Booksの書影データを引用</strong>しています。ISBNが登録されている書籍のタイトルはGoogle Booksの該当ページへリンクされます。書影はあくまで書籍紹介・個人的な読書記録の目的での引用であり、商業目的での利用はご遠慮ください。</p>
-
-                <p style="margin:0 0 14px;"><strong>📊 CSV エクスポート／インポートについて</strong><br>
-                「📊 CSV」ボタンから登録データのエクスポートとインポートが行えます。<br>
-                <strong>エクスポート</strong>はタイトル・著者・日付・ジャンル・コメント・ISBN・書影URLを含むCSVファイルを保存します。定期的なバックアップや他ツールへのデータ移行にご活用ください。<br>
-                <strong>インポート</strong>はこのアプリで出力したCSVファイルを読み込み、新規データのみを追加します。ISBNが一致する既存データは重複として自動スキップされます。別デバイスや別ブラウザへのデータ移行にもご利用いただけます。<br>
-                <span style="color:#c00;">⚠️ ブラウザのデータを削除すると登録情報も失われます。定期的なCSVエクスポートを強くお勧めします。</span></p>
-
-                <p style="margin:0 0 14px;"><strong>🌐 動作環境について</strong><br>
-                インターネット接続が必要です（書籍検索時）。オフラインでも登録済みデータの閲覧は可能です。推奨ブラウザはChrome・Safari・Firefoxの最新版です。</p>
-
-                <p style="margin:0; padding:12px; background:#fff8e1; border-radius:8px; border-left:3px solid #ffc107; font-size:12px; color:#555;">
-                ⚠️ このツールは<strong>個人利用を目的</strong>として作成されたものです。商用利用や大規模な運用は想定していません。その点をご理解の上でご使用ください。不具合や予期しない動作が生じる可能性があることをあらかじめご了承ください。
-                </p>
-
-            </div>
+        <div class="modal-content" style="font-size:13px; line-height:1.6;">
+            <h2 style="margin-top:0;">使い方</h2>
+            <p>・カメラや検索で本を登録できます。<br>・データはこのブラウザにのみ保存されます。<br>・CSVでバックアップが可能です。</p>
+            <button class="btn btn-sub" onclick="document.getElementById('helpModal').style.display='none'">閉じる</button>
         </div>
     </div>
 
@@ -130,29 +70,14 @@
     </div>
 
     <div id="csvModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content" style="max-width:360px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="margin:0;">📊 CSV</h3>
-                <button onclick="document.getElementById('csvModal').style.display='none'"
-                        style="background:none; border:none; font-size:22px; cursor:pointer; color:#666; padding:0 4px;">✕</button>
-            </div>
-
-            <div style="margin-bottom:20px; padding:16px; background:#f8f9fa; border-radius:10px;">
-                <div style="font-weight:bold; margin-bottom:6px;">📤 エクスポート</div>
-                <div style="font-size:13px; color:#555; margin-bottom:12px;">登録中の全書籍データをCSVファイルとして保存します。バックアップや他ツールへの移行にご利用ください。</div>
-                <button class="btn btn-main" style="width:100%;" onclick="exportToCSV(); document.getElementById('csvModal').style.display='none'">ダウンロード</button>
-            </div>
-
-            <div style="padding:16px; background:#f8f9fa; border-radius:10px;">
-                <div style="font-weight:bold; margin-bottom:6px;">📥 インポート</div>
-                <div style="font-size:13px; color:#555; margin-bottom:4px;">このアプリで出力したCSVファイルを読み込みます。</div>
-                <div style="font-size:12px; color:#888; margin-bottom:12px;">※ ISBNが一致する既存データはスキップされます。新規データのみ追加されます。</div>
-                <label style="display:block; background:#1a73e8; color:white; text-align:center; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px;">
-                    ファイルを選択
-                    <input type="file" accept=".csv" style="display:none;" onchange="importFromCSV(event)">
-                </label>
-                <div id="importResult" style="margin-top:10px; font-size:13px; display:none;"></div>
-            </div>
+        <div class="modal-content">
+            <h3 style="margin-top:0;">📊 CSV</h3>
+            <button class="btn btn-main" style="width:100%; margin-bottom:15px;" onclick="exportToCSV(); document.getElementById('csvModal').style.display='none'">📤 書き出し (ダウンロード)</button>
+            <label style="display:block; background:var(--bg); border:2px dashed #ccc; padding:20px; text-align:center; cursor:pointer; border-radius:10px;">
+                📥 読み込み (ファイルを選択)
+                <input type="file" accept=".csv" style="display:none;" onchange="importFromCSV(event)">
+            </label>
+            <div id="importResult" style="margin-top:10px; font-size:12px;"></div>
         </div>
     </div>
 
@@ -161,20 +86,18 @@
             <button id="modeLiveBtn" class="scan-mode-btn active" onclick="setScanMode('live')">🎥 リアルタイム</button>
             <button id="modePhotoBtn" class="scan-mode-btn" onclick="setScanMode('photo')">📸 撮影して読取</button>
         </div>
-
         <div id="liveMode">
-            <div id="interactive" style="position:relative; background:black; border-radius:10px; overflow:hidden;"></div>
+            <div id="interactive"></div>
             <p class="status-msg" id="liveScanStatus">バーコードをカメラに向けてください</p>
         </div>
-
         <div id="photoMode" class="hidden">
-            <div id="cameraViewArea" style="position:relative; background:black; border-radius:10px; overflow:hidden; min-height:220px;">
-                <video id="photoVideo" style="width:100%; display:block;" autoplay playsinline></video>
+            <div id="cameraViewArea" style="position:relative; min-height:200px;">
+                <video id="photoVideo" style="width:100%;" autoplay playsinline></video>
                 <button id="captureBtn" onclick="capturePhoto()">📸</button>
             </div>
             <canvas id="captureCanvas" style="display:none;"></canvas>
             <div id="captureResultArea" class="hidden">
-                <img id="capturePreview" alt="撮影画像" style="width:100%; border-radius:10px; display:block;">
+                <img id="capturePreview" style="width:100%; border-radius:10px;">
                 <p class="status-msg" id="captureStatus">解析中...</p>
             </div>
         </div>
@@ -192,80 +115,59 @@
     <div id="calendarArea" class="card hidden">
         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(-1)">◀</button>
-            <span id="currentMonthLabel" style="font-weight:bold; font-size:16px;"></span>
+            <span id="currentMonthLabel" style="font-weight:bold;"></span>
             <button class="btn btn-sub" style="flex:none; width:60px;" onclick="changeMonth(1)">▶</button>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
-        <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between; min-height:36px;">
+        <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
             <span id="calFilterLabel" style="font-size:12px; color:#888;"></span>
-            <button id="shareBtn" class="hidden" style="background:#1a73e8; color:white; border:none; border-radius:8px; padding:6px 14px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="openShareModal()">📷 画像として保存</button>
+            <button id="shareBtn" class="hidden" style="background:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 12px; font-weight:bold;" onclick="openShareModal()">📷 画像として保存</button>
         </div>
     </div>
 
     <div id="listDisplay"></div>
 
     <div id="shareModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content" style="max-width:400px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0;">📷 画像として保存</h3>
-                <button onclick="document.getElementById('shareModal').style.display='none'"
-                        style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
-            </div>
-            <div style="font-size:13px; color:#555; margin-bottom:16px;" id="shareModalLabel"></div>
+        <div class="modal-content">
+            <h3 style="margin:0 0 10px;">📷 画像として保存</h3>
             <div id="shareSelectArea" style="display:flex; gap:10px; margin-bottom:12px;">
                 <button class="btn btn-main" onclick="generateShareImage(true)">🖼️ 書影あり</button>
-                <button class="btn btn-sub" onclick="generateShareImage(false)">📋 書影なし</button>
+                <button class="btn btn-sub" onclick="generateShareImage(false)">📋 リストのみ</button>
             </div>
-            <div id="shareProgress" style="display:none; text-align:center; color:#888; font-size:13px; padding:10px;">生成中...</div>
+            <div id="shareProgress" style="display:none; text-align:center;">生成中...</div>
             <div id="sharePreviewArea" style="display:none;">
-                <img id="sharePreviewImg" style="width:100%; border-radius:8px; border:1px solid #eee; margin-bottom:12px;" alt="プレビュー">
-                <a id="shareDownloadLink" download style="display:block;">
-                    <button class="btn btn-main" style="width:100%; font-size:15px;">⬇️ 画像をダウンロード</button>
+                <img id="sharePreviewImg" style="width:100%; border-radius:8px; border:1px solid #eee;">
+                <a id="shareDownloadLink" download style="display:block; margin-top:10px;">
+                    <button class="btn btn-main" style="width:100%;">⬇️ 保存する</button>
                 </a>
-                <p style="font-size:11px; color:#999; text-align:center; margin-top:8px;">スマホの場合は画像を長押しして保存してください</p>
             </div>
         </div>
     </div>
 
     <div id="isbnPopup" class="modal">
-        <div class="modal-content" style="text-align:center; padding:28px 20px;">
-            <div style="font-size:32px; margin-bottom:8px;">📌</div>
-            <div style="font-size:14px; color:#555; margin-bottom:4px;">読み取ったISBN</div>
-            <div style="font-size:28px; font-weight:bold; letter-spacing:3px; font-family:monospace; color:#1a73e8; margin:12px 0 20px;"></div>
-            <div style="font-size:13px; color:#888; margin-bottom:20px;">正しければ検索を実行してください</div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-confirm" style="font-size:15px;" onclick="searchByConfirmedIsbn()">🔍 この番号で検索</button>
-                <button class="btn btn-cancel" onclick="closeIsbnPopup()">やり直す</button>
+        <div class="modal-content" style="text-align:center;">
+            <div style="font-size:14px; color:#555;">読み取ったISBN</div>
+            <div id="isbnDisplay" style="font-size:24px; font-weight:bold; color:#1a73e8; margin:10px 0;"></div>
+            <div class="modal-footer">
+                <button class="btn btn-confirm" onclick="searchByConfirmedIsbn()">🔍 検索</button>
+                <button class="btn btn-cancel" onclick="closeIsbnPopup()">戻る</button>
             </div>
-        </div>
-    </div>
-
-    <div id="searchingOverlay" class="modal" style="background:rgba(0,0,0,0.6);">
-        <div style="background:white; padding:28px 32px; border-radius:16px; text-align:center;">
-            <div style="font-size:28px; margin-bottom:10px;">🔍</div>
-            <div id="searchingMsg" style="font-size:15px; color:#333;">書籍情報を検索中...</div>
-            <div style="font-size:13px; color:#999; margin-top:6px;" id="searchingIsbnLabel"></div>
         </div>
     </div>
 
     <div id="editModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top:0; text-align:center;">書籍情報の登録</h3>
-            <label>タイトル（複数ワード可）</label>
+            <h3 style="margin-top:0;">書籍登録</h3>
             <div class="search-box">
-                <input type="text" id="fTitle" placeholder="作品名、著者名など...">
+                <input type="text" id="fTitle" placeholder="タイトル検索...">
                 <button class="btn btn-search" onclick="searchBooks()">検索</button>
             </div>
             <div id="searchResults" class="search-results"></div>
-            
-            <label>著者名</label><input type="text" id="fAuthor">
-            <label>記録日</label><input type="date" id="fDate">
-            <label>ジャンル</label>
-            <input type="text" id="fGenre" list="genreOptions">
-            <datalist id="genreOptions"></datalist>
+            <label>著者</label><input type="text" id="fAuthor">
+            <label>日付</label><input type="date" id="fDate">
+            <label>ジャンル</label><input type="text" id="fGenre" list="genreOptions"><datalist id="genreOptions"></datalist>
             <label>コメント</label><textarea id="fComment" rows="2"></textarea>
             <input type="hidden" id="fIsbn">
-            
             <div class="modal-footer">
                 <button class="btn btn-confirm" onclick="saveData()">保存</button>
                 <button class="btn btn-cancel" onclick="closeModal()">中止</button>
@@ -281,34 +183,346 @@
     let calDate = new Date();
     let filterDate = null;
 
-    // NO IMAGE用SVG
-    const NO_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="200" viewBox="0 0 150 200">
-        <rect width="150" height="200" fill="#d0d0d0"/>
-        <rect x="10" y="10" width="130" height="180" fill="#c0c0c0" rx="4"/>
-        <text x="75" y="95" font-family="sans-serif" font-size="13" fill="#888" text-anchor="middle" font-weight="bold">NO</text>
-        <text x="75" y="112" font-family="sans-serif" font-size="13" fill="#888" text-anchor="middle" font-weight="bold">IMAGE</text>
-        <rect x="30" y="130" width="90" height="3" fill="#bbb" rx="2"/>
-        <rect x="40" y="140" width="70" height="3" fill="#bbb" rx="2"/>
-        <rect x="50" y="150" width="50" height="3" fill="#bbb" rx="2"/>
-    </svg>`;
+    const NO_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="200" viewBox="0 0 150 200"><rect width="150" height="200" fill="#ddd"/><text x="75" y="105" font-family="sans-serif" font-size="14" fill="#888" text-anchor="middle">NO IMAGE</text></svg>`;
     const NO_IMAGE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(NO_IMAGE_SVG);
 
-    const NO_IMAGE_SVG_SMALL = `<svg xmlns="http://www.w3.org/2000/svg" width="45" height="60" viewBox="0 0 45 60">
-        <rect width="45" height="60" fill="#d0d0d0"/>
-        <text x="22" y="27" font-family="sans-serif" font-size="7" fill="#888" text-anchor="middle" font-weight="bold">NO</text>
-        <text x="22" y="37" font-family="sans-serif" font-size="7" fill="#888" text-anchor="middle" font-weight="bold">IMAGE</text>
-    </svg>`;
-    const NO_IMAGE_SRC_SMALL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(NO_IMAGE_SVG_SMALL);
-
-    // スキャナ状態
     let scannerOpen = false;
     let currentScanMode = 'live'; 
     let liveQuaggaRunning = false;
     let photoStream = null;
-    let pendingIsbn = null; 
+    let pendingIsbn = null;
 
-    function normalizeText(text) { 
-        return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?・]/g, ""); 
+    function normalizeText(text) { return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?・]/g, ""); }
+
+    // ISBNがない場合はリンクを生成しないように修正
+    function getBookLink(b) {
+        if (b.isbn && b.isbn.trim() !== "") {
+            return `https://www.google.com/search?q=isbn:${b.isbn}&tbm=bks`;
+        }
+        return null;
     }
 
-    // リンク生成関数（
+    // CORS回避のためのプロキシ（画像保存エラー解消用）
+    function getSafeProxyImg(url) {
+        if (!url) return "";
+        return `https://api.allorigins.win/raw?url=${encodeURIComponent(url.replace('http://', 'https://'))}`;
+    }
+
+    function toggleScanner() {
+        if (!scannerOpen) {
+            scannerOpen = true;
+            document.getElementById('scannerArea').classList.remove('hidden');
+            document.getElementById('scanToggleBtn').innerText = "⏹ 停止";
+            setScanMode(currentScanMode);
+        } else {
+            closeScanner();
+        }
+    }
+
+    function stopAllScanning() {
+        if (liveQuaggaRunning) { try { Quagga.stop(); } catch(e){} liveQuaggaRunning = false; }
+        if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
+    }
+
+    function closeScanner() {
+        stopAllScanning();
+        document.getElementById('scannerArea').classList.add('hidden');
+        document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
+        scannerOpen = false;
+    }
+
+    function setScanMode(mode) {
+        currentScanMode = mode;
+        stopAllScanning();
+        document.getElementById('modeLiveBtn').classList.toggle('active', mode === 'live');
+        document.getElementById('modePhotoBtn').classList.toggle('active', mode === 'photo');
+        document.getElementById('liveMode').classList.toggle('hidden', mode !== 'live');
+        document.getElementById('photoMode').classList.toggle('hidden', mode !== 'photo');
+        if (mode === 'live') startLiveScanner(); else startPhotoCamera();
+    }
+
+    function startLiveScanner() {
+        const el = document.getElementById('interactive');
+        el.innerHTML = '';
+        Quagga.init({
+            inputStream: { name: "Live", type: "LiveStream", target: el, constraints: { facingMode: "environment" } },
+            decoder: { readers: ["ean_reader"] }
+        }, (err) => {
+            if (err) return;
+            Quagga.start(); liveQuaggaRunning = true;
+        });
+    }
+
+    Quagga.onDetected((data) => {
+        if (!liveQuaggaRunning) return;
+        const code = data.codeResult.code;
+        if (code && code.startsWith('978')) {
+            liveQuaggaRunning = false; Quagga.stop();
+            showIsbnPopup(code);
+        }
+    });
+
+    async function startPhotoCamera() {
+        try {
+            photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('photoVideo').srcObject = photoStream;
+        } catch(e) {}
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('photoVideo');
+        const canvas = document.getElementById('captureCanvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        document.getElementById('cameraViewArea').classList.add('hidden');
+        document.getElementById('capturePreview').src = dataUrl;
+        document.getElementById('captureResultArea').classList.remove('hidden');
+        Quagga.decodeSingle({ decoder: { readers: ["ean_reader"] }, src: dataUrl }, (res) => {
+            if (res?.codeResult?.code.startsWith('978')) showIsbnPopup(res.codeResult.code);
+            else document.getElementById('captureStatus').innerText = '読み取れませんでした';
+        });
+    }
+
+    function showIsbnPopup(isbn) {
+        pendingIsbn = isbn;
+        document.getElementById('isbnDisplay').innerText = isbn;
+        document.getElementById('isbnPopup').style.display = 'flex';
+    }
+
+    function closeIsbnPopup() {
+        document.getElementById('isbnPopup').style.display = 'none';
+        if (scannerOpen) setScanMode(currentScanMode);
+    }
+
+    async function searchByConfirmedIsbn() {
+        const isbn = pendingIsbn;
+        document.getElementById('isbnPopup').style.display = 'none';
+        try {
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+            const json = await res.json();
+            if (json.items?.length > 0) {
+                const info = json.items[0].volumeInfo;
+                closeScanner();
+                openModal({ title: info.title, author: info.authors?.[0]||"", img: info.imageLinks?.thumbnail||"", isbn, date: new Date().toISOString().split('T')[0], genre: "", comment: "" }, -1);
+            } else { alert("見つかりませんでした"); }
+        } catch(e) { alert("エラーが発生しました"); }
+    }
+
+    async function searchBooks() {
+        const query = document.getElementById('fTitle').value;
+        const resArea = document.getElementById('searchResults');
+        if (!query) return;
+        resArea.innerHTML = "検索中..."; resArea.style.display = "block";
+        try {
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`);
+            const json = await res.json();
+            resArea.innerHTML = (json.items || []).map(item => {
+                const info = item.volumeInfo;
+                const isbn = info.industryIdentifiers?.find(id => id.type.includes("ISBN"))?.identifier || "";
+                const img = info.imageLinks?.thumbnail || "";
+                return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/'/g,"")}', '${(info.authors?.[0]||"").replace(/'/g,"")}', '${img}', '${isbn}')">
+                    <img src="${img || NO_IMAGE_SRC}">
+                    <div><strong>${info.title}</strong><br><small>${info.authors?.[0]||""}</small></div>
+                </div>`;
+            }).join('') || "見つかりません";
+        } catch(e) { resArea.innerHTML = "エラー"; }
+    }
+
+    function selectSearchBook(t, a, i, isbn) {
+        document.getElementById('fTitle').value = t;
+        document.getElementById('fAuthor').value = a;
+        document.getElementById('fIsbn').value = isbn;
+        document.getElementById('editModal').dataset.img = i;
+        document.getElementById('searchResults').style.display = "none";
+    }
+
+    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"", isbn:"" }, -1); }
+
+    function openModal(data, index) {
+        editingIndex = index;
+        document.getElementById('fTitle').value = data.title;
+        document.getElementById('fAuthor').value = data.author;
+        document.getElementById('fDate').value = data.date;
+        document.getElementById('fGenre').value = data.genre;
+        document.getElementById('fComment').value = data.comment;
+        document.getElementById('fIsbn').value = data.isbn || "";
+        document.getElementById('editModal').dataset.img = data.img;
+        document.getElementById('editModal').style.display = 'flex';
+        document.getElementById('genreOptions').innerHTML = genres.map(g => `<option value="${g}">`).join('');
+    }
+
+    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+    function saveData() {
+        const genre = document.getElementById('fGenre').value || "未分類";
+        if (!genres.includes(genre)) genres.push(genre);
+        const data = {
+            title: document.getElementById('fTitle').value,
+            author: document.getElementById('fAuthor').value,
+            date: document.getElementById('fDate').value,
+            genre: genre,
+            comment: document.getElementById('fComment').value,
+            img: document.getElementById('editModal').dataset.img || "",
+            isbn: document.getElementById('fIsbn').value
+        };
+        if (editingIndex > -1) books[editingIndex] = data; else books.unshift(data);
+        localStorage.setItem('myBooks', JSON.stringify(books));
+        localStorage.setItem('myGenres', JSON.stringify(genres));
+        closeModal(); render();
+    }
+
+    function deleteBook(idx) {
+        if (confirm("削除しますか？")) { books.splice(idx, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); }
+    }
+
+    function setView(v) { currentView = v; filterDate = null; render(); }
+
+    function render() {
+        const listEl = document.getElementById('listDisplay');
+        const calArea = document.getElementById('calendarArea');
+        const gFilter = document.getElementById('genreFilter').value;
+        
+        let filtered = books.map((b, i) => ({...b, originalIndex: i}));
+        if (gFilter !== 'all') filtered = filtered.filter(b => b.genre === gFilter);
+
+        calArea.classList.toggle('hidden', currentView !== 'calendar');
+
+        if (currentView === 'calendar') {
+            renderCalendar();
+            const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
+            filtered = filterDate ? filtered.filter(b => b.date === filterDate) : filtered.filter(b => b.date.startsWith(prefix));
+            document.getElementById('shareBtn').classList.toggle('hidden', filtered.length === 0);
+        }
+
+        if (currentView === 'table') {
+            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; background:white; font-size:13px;">${filtered.map(b => {
+                const link = getBookLink(b);
+                const titleHtml = link ? `<a href="${link}" target="_blank" style="color:var(--primary); font-weight:bold; text-decoration:none;">${b.title}</a>` : `<span style="font-weight:bold;">${b.title}</span>`;
+                return `<tr style="border-bottom:1px solid #eee">
+                    <td style="padding:8px;"><img src="${b.img || NO_IMAGE_SRC}" style="width:40px; height:55px; object-fit:cover;"></td>
+                    <td style="padding:8px;">${titleHtml}<br><small>${b.author}</small></td>
+                    <td style="padding:8px; text-align:right;">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" style="border:1px solid var(--primary); background:none; padding:4px; border-radius:4px;">編集</button>
+                    </td>
+                </tr>`;
+            }).join('')}</table>`;
+        } else {
+            listEl.innerHTML = `<div class="book-grid">${filtered.map(b => {
+                const link = getBookLink(b);
+                const imgHtml = link ? `<a href="${link}" target="_blank"><img src="${b.img || NO_IMAGE_SRC}"></a>` : `<img src="${b.img || NO_IMAGE_SRC}">`;
+                const titleHtml = link ? `<a href="${link}" target="_blank" style="color:#222; text-decoration:none; font-weight:bold;">${b.title}</a>` : `<span style="font-weight:bold;">${b.title}</span>`;
+                return `<div class="book-card">
+                    ${imgHtml}
+                    <div class="book-info">${titleHtml}<br><small>${b.author}</small><div class="book-meta">${b.date}</div></div>
+                    <button class="btn btn-sub" style="min-height:30px; font-size:12px; margin-top:5px;" onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})">編集</button>
+                </div>`;
+            }).join('')}</div>`;
+        }
+        const sel = document.getElementById('genreFilter');
+        const cur = sel.value;
+        sel.innerHTML = `<option value="all">すべてのジャンル</option>` + genres.map(g => `<option value="${g}">${g}</option>`).join('');
+        sel.value = cur;
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const year = calDate.getFullYear(); const month = calDate.getMonth();
+        document.getElementById('currentMonthLabel').innerText = `${year}年 ${month + 1}月`;
+        grid.innerHTML = "";
+        const first = new Date(year, month, 1).getDay(); const last = new Date(year, month + 1, 0).getDate();
+        for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
+        for (let d = 1; d <= last; d++) {
+            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const count = books.filter(b => b.date === dStr).length;
+            grid.innerHTML += `<div class="calendar-day ${filterDate===dStr?'active':''}" onclick="filterByDate('${dStr}')">${d}${count>0?`<span class="count-badge">${count}</span>`:''}</div>`;
+        }
+    }
+    function filterByDate(d) { filterDate = filterDate === d ? null : d; render(); }
+    function changeMonth(n) { calDate.setMonth(calDate.getMonth() + n); filterDate = null; render(); }
+
+    function exportToCSV() {
+        let csv = "タイトル,著者,日付,ジャンル,コメント,ISBN,書影URL\n";
+        books.forEach(b => csv += `"${b.title}","${b.author}","${b.date}","${b.genre}","${b.comment}","${b.isbn}","${b.img}"\n`);
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "honlog.csv"; a.click();
+    }
+
+    function importFromCSV(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (f) => {
+            const rows = f.target.result.split('\n').slice(1);
+            rows.forEach(row => {
+                const c = row.split('","').map(v => v.replace(/"/g, ""));
+                if (c.length >= 7) books.push({title:c[0], author:c[1], date:c[2], genre:c[3], comment:c[4], isbn:c[5], img:c[6]});
+            });
+            localStorage.setItem('myBooks', JSON.stringify(books)); render();
+        };
+        reader.readAsText(file);
+    }
+
+    function openShareModal() {
+        document.getElementById('shareSelectArea').style.display = 'flex';
+        document.getElementById('sharePreviewArea').style.display = 'none';
+        document.getElementById('shareModal').style.display = 'flex';
+    }
+
+    async function generateShareImage(withCover) {
+        const area = document.getElementById('shareProgress');
+        area.style.display = 'block';
+        document.getElementById('shareSelectArea').style.display = 'none';
+        
+        // カレンダー表示条件に合わせたリスト抽出
+        const gFilter = document.getElementById('genreFilter').value;
+        const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
+        let target = books.filter(b => b.date.startsWith(prefix));
+        if (gFilter !== 'all') target = target.filter(b => b.genre === gFilter);
+        if (filterDate) target = target.filter(b => b.date === filterDate);
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const W = 800;
+        const rows = Math.ceil(target.length / 3);
+        const H = withCover ? (rows * 300 + 100) : (target.length * 50 + 100);
+        canvas.width = W; canvas.height = H;
+
+        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle = "#1a73e8"; ctx.font = "bold 30px sans-serif";
+        ctx.fillText("📚 読書記録", 30, 60);
+
+        if (withCover) {
+            for(let i=0; i<target.length; i++) {
+                const b = target[i];
+                const x = 30 + (i % 3) * 250;
+                const y = 100 + Math.floor(i / 3) * 300;
+                if (b.img) {
+                    const img = new Image();
+                    img.crossOrigin = "anonymous";
+                    img.src = getSafeProxyImg(b.img);
+                    await new Promise(res => {
+                        img.onload = () => { ctx.drawImage(img, x, y, 220, 280); res(); };
+                        img.onerror = () => { ctx.fillStyle="#eee"; ctx.fillRect(x,y,220,280); res(); };
+                    });
+                } else {
+                    ctx.fillStyle="#eee"; ctx.fillRect(x,y,220,280);
+                }
+            }
+        } else {
+            target.forEach((b, i) => {
+                ctx.fillStyle="#333"; ctx.font = "20px sans-serif";
+                ctx.fillText(`・ ${b.title} (${b.author})`, 30, 110 + i * 45);
+            });
+        }
+
+        const dataUrl = canvas.toDataURL('image/png');
+        document.getElementById('sharePreviewImg').src = dataUrl;
+        document.getElementById('shareDownloadLink').href = dataUrl;
+        area.style.display = 'none';
+        document.getElementById('sharePreviewArea').style.display = 'block';
+    }
+
+    render();
+</script>
+</body>
+</html>
