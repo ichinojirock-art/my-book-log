@@ -101,8 +101,10 @@
                 <p style="margin:0 0 14px;"><strong>💾 データの保存場所について</strong><br>
                 登録した書籍情報は<strong>このブラウザのローカルストレージ</strong>に保存されます。そのため、別のブラウザやデバイスで開いても情報は表示されません。裏を返せば、<strong>登録内容は自分のブラウザ内にしか存在せず、外部に送信されることは一切ありません</strong>ので、プライバシーの面では安心してお使いいただけます。</p>
 
-                <p style="margin:0 0 14px;"><strong>📊 CSVエクスポートについて</strong><br>
-                「📊 CSV」ボタンから登録データをCSV形式でエクスポートできます。タイトル・著者・日付・ジャンル・コメントに加え、<strong>ISBN情報も出力</strong>されます。定期的にバックアップとして保存しておくこと、または他の読書管理ツールへインポートする際にご活用ください。<br>
+                <p style="margin:0 0 14px;"><strong>📊 CSV エクスポート／インポートについて</strong><br>
+                「📊 CSV」ボタンから登録データのエクスポートとインポートが行えます。<br>
+                <strong>エクスポート</strong>はタイトル・著者・日付・ジャンル・コメント・ISBN・書影URLを含むCSVファイルを保存します。定期的なバックアップや他ツールへのデータ移行にご活用ください。<br>
+                <strong>インポート</strong>はこのアプリで出力したCSVファイルを読み込み、新規データのみを追加します。ISBNが一致する既存データは重複として自動スキップされます。別デバイスや別ブラウザへのデータ移行にもご利用いただけます。<br>
                 <span style="color:#c00;">⚠️ ブラウザのデータを削除すると登録情報も失われます。定期的なCSVエクスポートを強くお勧めします。</span></p>
 
                 <p style="margin:0 0 14px;"><strong>🌐 動作環境について</strong><br>
@@ -119,7 +121,37 @@
     <div class="main-action-grid">
         <button id="scanToggleBtn" class="btn btn-main" onclick="toggleScanner()">📷 スキャン</button>
         <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
-        <button class="btn btn-sub btn-export" onclick="exportToCSV()">📊 CSV</button>
+        <button class="btn btn-sub btn-export" onclick="document.getElementById('csvModal').style.display='flex'">📊 CSV</button>
+    </div>
+
+    <!-- CSV エクスポート／インポート選択モーダル -->
+    <div id="csvModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal-content" style="max-width:360px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;">📊 CSV</h3>
+                <button onclick="document.getElementById('csvModal').style.display='none'"
+                        style="background:none; border:none; font-size:22px; cursor:pointer; color:#666; padding:0 4px;">✕</button>
+            </div>
+
+            <!-- エクスポート -->
+            <div style="margin-bottom:20px; padding:16px; background:#f8f9fa; border-radius:10px;">
+                <div style="font-weight:bold; margin-bottom:6px;">📤 エクスポート</div>
+                <div style="font-size:13px; color:#555; margin-bottom:12px;">登録中の全書籍データをCSVファイルとして保存します。バックアップや他ツールへの移行にご利用ください。</div>
+                <button class="btn btn-main" style="width:100%;" onclick="exportToCSV(); document.getElementById('csvModal').style.display='none'">ダウンロード</button>
+            </div>
+
+            <!-- インポート -->
+            <div style="padding:16px; background:#f8f9fa; border-radius:10px;">
+                <div style="font-weight:bold; margin-bottom:6px;">📥 インポート</div>
+                <div style="font-size:13px; color:#555; margin-bottom:4px;">このアプリで出力したCSVファイルを読み込みます。</div>
+                <div style="font-size:12px; color:#888; margin-bottom:12px;">※ ISBNが一致する既存データはスキップされます。新規データのみ追加されます。</div>
+                <label style="display:block; background:#1a73e8; color:white; text-align:center; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px;">
+                    ファイルを選択
+                    <input type="file" accept=".csv" style="display:none;" onchange="importFromCSV(event)">
+                </label>
+                <div id="importResult" style="margin-top:10px; font-size:13px; display:none;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- スキャナエリア -->
@@ -735,6 +767,93 @@
         books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment, b.isbn, b.img].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv;charset=utf-8;" });
         const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `books_backup.csv`; a.click();
+    }
+
+    function importFromCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const resultEl = document.getElementById('importResult');
+        resultEl.style.display = 'none';
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                let text = e.target.result.replace(/^\uFEFF/, ''); // BOM除去
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length < 2) throw new Error('データが見つかりません');
+
+                // ヘッダーからカラム位置を動的に取得
+                const headers = parseCSVLine(lines[0]);
+                const col = (name) => headers.indexOf(name);
+                if (col('タイトル') === -1) throw new Error('「タイトル」列が見つかりません。このアプリで出力したCSVを使用してください。');
+
+                const existingIsbns = new Set(books.map(b => b.isbn).filter(Boolean));
+                let added = 0, skipped = 0;
+                const newGenres = new Set(genres);
+
+                for (let i = 1; i < lines.length; i++) {
+                    const row = parseCSVLine(lines[i]);
+                    if (!row.length || row.every(c => !c)) continue;
+
+                    const isbn  = col('ISBN')    !== -1 ? row[col('ISBN')]    || '' : '';
+                    const title = col('タイトル') !== -1 ? row[col('タイトル')] || '' : '';
+                    const date  = col('日付')    !== -1 ? row[col('日付')]    || '' : '';
+
+                    // ISBNありは重複チェック、なしはタイトル+日付で簡易チェック
+                    if (isbn && existingIsbns.has(isbn)) { skipped++; continue; }
+                    if (!isbn && books.some(b => b.title === title && b.date === date)) { skipped++; continue; }
+
+                    const genre = col('ジャンル') !== -1 ? row[col('ジャンル')] || '未分類' : '未分類';
+                    newGenres.add(genre);
+
+                    books.push({
+                        title,
+                        author:  col('著者')    !== -1 ? row[col('著者')]    || '' : '',
+                        date,
+                        genre,
+                        comment: col('コメント') !== -1 ? row[col('コメント')] || '' : '',
+                        isbn,
+                        img:     col('書影URL') !== -1 ? row[col('書影URL')] || '' : ''
+                    });
+                    if (isbn) existingIsbns.add(isbn);
+                    added++;
+                }
+
+                genres = [...newGenres];
+                localStorage.setItem('myBooks', JSON.stringify(books));
+                localStorage.setItem('myGenres', JSON.stringify(genres));
+                render();
+
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = `<span style="color:#28a745;">✅ ${added}件追加、${skipped}件スキップしました。</span>`;
+                event.target.value = '';
+            } catch(err) {
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = `<span style="color:#dc3545;">❌ ${err.message}</span>`;
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    // CSVの1行をパース（ダブルクォート・エスケープ対応）
+    function parseCSVLine(line) {
+        const result = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (inQ) {
+                if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+                else if (c === '"') { inQ = false; }
+                else { cur += c; }
+            } else {
+                if (c === '"') { inQ = true; }
+                else if (c === ',') { result.push(cur); cur = ''; }
+                else { cur += c; }
+            }
+        }
+        result.push(cur);
+        return result;
     }
 
     render();
