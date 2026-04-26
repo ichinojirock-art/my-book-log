@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Book Log Ultra V6</title>
+    <title>My Book Log Ultra V7</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
@@ -23,15 +23,16 @@
             background: #ffffff; 
             border-radius: 8px; 
             margin-bottom: 15px; 
-            max-height: 300px; 
+            max-height: 320px; 
             overflow-y: auto; 
             display: none; 
             border: 2px solid var(--primary); 
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 12px; }
-        .search-item img { width: 40px; height: auto; border-radius: 3px; flex-shrink: 0; }
+        .search-item img { width: 45px; height: auto; border-radius: 3px; flex-shrink: 0; }
         .search-item:hover { background: #f1f3f4; }
+        .hl { color: var(--primary); font-weight: bold; }
 
         #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
         #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
@@ -96,9 +97,9 @@
     <div id="editModal" class="modal">
         <div class="modal-content">
             <h3 style="margin:0 0 10px">書籍情報の登録/編集</h3>
-            <label>作品タイトル</label>
+            <label>タイトル（検索キーワード）</label>
             <div class="search-box">
-                <input type="text" id="fTitle" placeholder="作品名や巻数を入力...">
+                <input type="text" id="fTitle" placeholder="作品名、巻数、著者名など...">
                 <button class="btn btn-search" onclick="searchBooks()">検索</button>
             </div>
             <div id="searchResults" class="search-results"></div>
@@ -123,11 +124,8 @@
     let calDate = new Date();
     let filterDate = null;
 
-    // 文字列の標準化（全角→半角、記号除去）
     function normalizeText(text) {
-        return text.normalize("NFKC") // 全角英数を半角に変換
-                   .toLowerCase()
-                   .replace(/[\s\(\)\[\]（）「」『』【】！？!?]/g, ""); // スペースと記号を除去
+        return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?]/g, "");
     }
 
     function toggleScanner() {
@@ -174,42 +172,47 @@
         const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
 
         try {
+            // maxResultsを最大値の40に設定して取得
             const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
             const json = await res.json();
             
+            let html = "";
             if (json.items) {
+                // 部分一致によるフィルタリング（より柔軟に）
                 const filteredItems = json.items.filter(item => {
                     const normalizedTitle = normalizeText(item.volumeInfo.title || "");
-                    return keywords.every(kw => normalizedTitle.includes(kw));
+                    const normalizedAuthor = normalizeText(item.volumeInfo.authors?.[0] || "");
+                    const combinedText = normalizedTitle + normalizedAuthor;
+                    return keywords.every(kw => combinedText.includes(kw));
                 });
 
                 if (filteredItems.length > 0) {
-                    resArea.innerHTML = filteredItems.map(item => {
+                    html = filteredItems.map(item => {
                         const info = item.volumeInfo;
                         const img = info.imageLinks?.thumbnail || "";
                         const author = info.authors?.[0] || "不明";
-                        const safeTitle = info.title.replace(/['"`]/g, "");
-                        const safeAuthor = author.replace(/['"`]/g, "");
+                        const displayTitle = info.title.replace(new RegExp(`(${query.replace(/\s+/g, '|')})`, 'gi'), '<span class="hl">$1</span>');
                         return `
-                            <div class="search-item" onclick="selectSearchBook('${safeTitle}', '${safeAuthor}', '${img}')">
+                            <div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${author.replace(/['"`]/g, "")}', '${img}')">
                                 <img src="${img || 'https://via.placeholder.com/40x60'}">
-                                <div style="overflow:hidden"><strong>${info.title}</strong><br><small>${author}</small></div>
+                                <div style="overflow:hidden"><strong>${displayTitle}</strong><br><small>${author}</small></div>
                             </div>`;
                     }).join('');
                 } else {
-                    resArea.innerHTML = "<div style='padding:10px'>絞り込めませんでした。APIの全結果を表示します。</div>";
-                    // 絞り込みで0件ならAPIの結果をそのまま出す（保険）
-                    resArea.innerHTML += json.items.slice(0, 5).map(item => {
+                    html = "<div style='padding:10px; font-size:11px; color:#666;'>絞り込み条件に合うものがありませんでした。キーワードを短くしてみてください。</div>";
+                    // 絞り込みで0件なら上位3件だけ参考として出す
+                    html += json.items.slice(0, 3).map(item => {
                         const info = item.volumeInfo;
                         const img = info.imageLinks?.thumbnail || "";
                         return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${(info.authors?.[0] || "不明").replace(/['"`]/g, "")}', '${img}')">
                             <img src="${img || 'https://via.placeholder.com/40x60'}">
-                            <div><strong>${info.title}</strong></div>
+                            <div><strong>${info.title}</strong><br><small>候補</small></div>
                         </div>`;
                     }).join('');
                 }
-            } else { resArea.innerHTML = "<div style='padding:10px'>見つかりませんでした</div>"; }
-        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>エラーが発生しました</div>"; }
+            } else { html = "<div style='padding:10px'>APIで本が見つかりませんでした</div>"; }
+            resArea.innerHTML = html;
+        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>通信エラーが発生しました</div>"; }
     }
 
     function selectSearchBook(title, author, img) {
@@ -291,6 +294,7 @@
                     <td><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
                     <td style="text-align:right">
                         <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub">編</button>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red;border:none">消</button>
                     </td></tr>`).join('')}</table>`;
         } else {
             listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
@@ -299,6 +303,7 @@
                     <div class="book-info"><strong>${b.title}</strong><br><small>${b.author}</small></div>
                     <div class="actions">
                         <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub btn-sm">編集</button>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub btn-sm" style="color:red;border-color:red">削除</button>
                     </div>
                 </div>`).join('')}</div>`;
         }
