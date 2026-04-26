@@ -2,172 +2,228 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Book Log Ultra V20 (NDL版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Book Log Ultra V7</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
         .hidden { display: none !important; }
-        .btn { padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; min-height: 48px; }
-        .btn-main { background: var(--primary); color: white; flex: 1; }
-        .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); flex: 1; }
+        
         .main-action-grid { display: flex; gap: 8px; margin-bottom: 15px; }
-        .isbn-check-area { background: #fffde7; padding: 15px; border-radius: 12px; border: 2px dashed #fbc02d; margin-bottom: 15px; text-align: center; }
-        .isbn-display { font-size: 24px; font-weight: bold; font-family: monospace; color: #d32f2f; display: block; margin: 10px 0; }
-        .search-container { display: flex; gap: 8px; margin-bottom: 10px; }
-        .btn-search { background: #5f6368; color: white; width: 80px; flex-shrink: 0; border-radius: 10px; border: none; font-weight: bold; }
-        .card { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .btn { padding: 10px 5px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 44px; }
+        .btn-main { background: var(--primary); color: white; }
+        .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-export { border-color: var(--success); color: var(--success); }
+        
+        .search-box { display: flex; gap: 5px; align-items: flex-start; }
+        .btn-search { background: #5f6368; color: white; flex: none; width: 60px; height: 42px; margin-top: 5px; }
+
+        .search-results { 
+            background: #ffffff; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            max-height: 320px; 
+            overflow-y: auto; 
+            display: none; 
+            border: 2px solid var(--primary); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 12px; }
+        .search-item img { width: 45px; height: auto; border-radius: 3px; flex-shrink: 0; }
+        .search-item:hover { background: #f1f3f4; }
+        .hl { color: var(--primary); font-weight: bold; }
+
+        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
+        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
+
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; width: 92%; max-width: 400px; border-radius: 16px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; }
-        input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; }
-        .search-results { background: #fff; border-radius: 8px; max-height: 250px; overflow-y: auto; display: none; border: 2px solid var(--primary); margin-top: -5px; margin-bottom: 15px; }
-        .search-item { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; align-items: center; font-size: 13px; }
-        .search-item img { width: 40px; }
+        .modal-content { background: white; padding: 20px; width: 90%; max-width: 400px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 5px 0 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .modal-footer { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-confirm { background: var(--success); color: white; flex: 1; padding: 12px; height: 50px; }
+        .btn-cancel { background: var(--danger); color: white; flex: 1; padding: 12px; height: 50px; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #ddd; }
+        .calendar-day { background: white; min-height: 50px; padding: 2px; font-size: 11px; text-align: center; cursor: pointer; }
+        .calendar-day.active { background: #e8f0fe; border: 2px solid var(--primary); }
+        .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; margin-top: 2px; }
+
+        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+        .book-card { background: white; padding: 12px; border-radius: 10px; border: 1px solid #eee; display: flex; flex-direction: column; }
+        .book-card img { width: 100%; border-radius: 6px; margin-bottom: 8px; }
+        .book-info { font-size: 12px; flex-grow: 1; }
+        
+        .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .table-view { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
+        .table-view td { padding: 8px; border-bottom: 1px solid #eee; }
+        .table-thumb { width: 40px; border-radius: 3px; }
     </style>
 </head>
 <body>
 
-    <h1>📚 My Book Log V20</h1>
+    <h1>📚 My Book Log</h1>
 
-    <div class="main-action-grid">
-        <button class="btn btn-main" style="background:#673ab7" onclick="document.getElementById('fileInput').click()">📸 バーコード撮影</button>
-        <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
-        <button class="btn btn-sub" onclick="exportToCSV()">📊 CSV</button>
-    </div>
-    
-    <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="decodeFile(this)">
-
-    <div id="isbnCheckArea" class="isbn-check-area hidden">
-        <span style="font-size:13px; color:#666;">読み取ったISBN（最終チェック）：</span>
-        <span id="detectedIsbn" class="isbn-display">----------</span>
-        <div style="display:flex; gap:8px;">
-            <button class="btn btn-main" id="searchExecBtn" onclick="searchByDetectedIsbn()">この番号で検索</button>
-            <button class="btn btn-sub" style="flex:0.5; color:red; border-color:red;" onclick="cancelIsbn()">取消</button>
+    <div id="mainControls">
+        <div class="main-action-grid">
+            <button id="scanToggleBtn" class="btn btn-main" onclick="toggleScanner()">📷 スキャン</button>
+            <button class="btn btn-sub" onclick="openManualEntry()">✍️ 手動登録</button>
+            <button class="btn btn-sub btn-export" onclick="exportToCSV()">📊 CSV出力</button>
         </div>
+        
+        <div id="interactive" class="viewport hidden"></div>
+        
+        <div class="card">
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button class="btn btn-sub" onclick="setView('card')">カード</button>
+                <button class="btn btn-sub" onclick="setView('table')">表</button>
+                <button class="btn btn-sub" onclick="setView('calendar')">カレンダー</button>
+            </div>
+            <select id="genreFilter" onchange="render()"><option value="all">すべてのジャンル</option></select>
+        </div>
+    </div>
+
+    <div id="calendarArea" class="card hidden">
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button class="btn btn-sub" style="flex:none; padding:5px 15px;" onclick="changeMonth(-1)">◀</button>
+            <span id="currentMonthLabel" style="font-weight:bold"></span>
+            <button class="btn btn-sub" style="flex:none; padding:5px 15px;" onclick="changeMonth(1)">▶</button>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
     </div>
 
     <div id="listDisplay"></div>
 
     <div id="editModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top:0; text-align:center;">書籍情報の登録</h3>
-            <div class="search-container">
-                <input type="text" id="fTitle" class="search-input" placeholder="タイトル・著者名で検索">
+            <h3 style="margin:0 0 10px">書籍情報の登録/編集</h3>
+            <label>タイトル（検索キーワード）</label>
+            <div class="search-box">
+                <input type="text" id="fTitle" placeholder="作品名、巻数、著者名など...">
                 <button class="btn btn-search" onclick="searchBooks()">検索</button>
             </div>
             <div id="searchResults" class="search-results"></div>
-            <label style="font-size:12px;">著者名</label><input type="text" id="fAuthor">
-            <label style="font-size:12px;">記録日</label><input type="date" id="fDate">
-            <label style="font-size:12px;">ジャンル</label><input type="text" id="fGenre" list="genreOptions"><datalist id="genreOptions"></datalist>
-            <label style="font-size:12px;">コメント</label><textarea id="fComment" rows="2"></textarea>
-            <input type="hidden" id="fIsbn">
-            <div style="display:flex; gap:12px; margin-top:10px;">
-                <button class="btn" style="background:var(--success); color:white; flex:1;" onclick="saveData()">保存</button>
-                <button class="btn" style="background:var(--danger); color:white; flex:1;" onclick="closeModal()">中止</button>
+            <label>著者名</label><input type="text" id="fAuthor">
+            <label>記録日</label><input type="date" id="fDate">
+            <label>ジャンル</label>
+            <input type="text" id="fGenre" list="genreOptions" placeholder="選択または入力">
+            <datalist id="genreOptions"></datalist>
+            <label>コメント</label><textarea id="fComment" rows="3"></textarea>
+            <div class="modal-footer">
+                <button class="btn btn-confirm" onclick="saveData()">保存</button>
+                <button class="btn btn-cancel" onclick="closeModal()">中止</button>
             </div>
         </div>
     </div>
 
 <script>
     let books = JSON.parse(localStorage.getItem('myBooks')) || [];
-    let genres = JSON.parse(localStorage.getItem('myGenres')) || ["未分類"];
-    let tempIsbn = "";
+    let genres = JSON.parse(localStorage.getItem('myGenres')) || ["恋愛", "バトル", "ミステリ", "その他"];
+    let currentView = 'card';
+    let editingIndex = -1; 
+    let calDate = new Date();
+    let filterDate = null;
 
-    function decodeFile(input) {
-        if (!input.files || !input.files[0]) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            Quagga.decodeSingle({
-                src: e.target.result,
-                decoder: { readers: ["ean_reader"] },
-                locate: true
-            }, function(result) {
-                if (result && result.codeResult) {
-                    tempIsbn = result.codeResult.code.replace(/[^0-9]/g, "");
-                    document.getElementById('detectedIsbn').innerText = tempIsbn;
-                    document.getElementById('isbnCheckArea').classList.remove('hidden');
-                } else { alert("バーコードを認識できませんでした。"); }
-            });
-        };
-        reader.readAsDataURL(input.files[0]);
+    function normalizeText(text) {
+        return (text || "").normalize("NFKC").toLowerCase().replace(/[\s\(\)\[\]（）「」『』【】！？!?]/g, "");
     }
 
-    function cancelIsbn() {
-        tempIsbn = "";
-        document.getElementById('isbnCheckArea').classList.add('hidden');
+    function toggleScanner() {
+        const el = document.getElementById('interactive');
+        if (el.classList.contains('hidden')) startScanner(); else stopScanner();
     }
 
-    // NDLサーチ(国立国会図書館)をメインに据えた検索
-    async function searchByDetectedIsbn() {
-        if (!tempIsbn) return;
-        const btn = document.getElementById('searchExecBtn');
-        btn.innerText = "国内DB探索中...";
-        
-        try {
-            // NDL API (OpenSearch形式)
-            const res = await fetch(`https://ndlsearch.ndl.go.jp/api/opensearch?isbn=${tempIsbn}`);
-            const text = await res.text();
-            
-            // XMLを簡易パース
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(text, "text/xml");
-            const item = xmlDoc.querySelector("item");
-
-            if (item) {
-                const title = item.querySelector("title")?.textContent || "";
-                const author = item.querySelector("author")?.textContent || "";
-                openModal({ title, author, date: new Date().toISOString().split('T')[0], img: "", genre: "", comment: "", isbn: tempIsbn }, -1);
-                cancelIsbn();
-            } else {
-                // NDLになければGoogleで最後の一掻き
-                const resG = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${tempIsbn}`);
-                const jsonG = await resG.json();
-                if (jsonG.items) {
-                    const b = jsonG.items[0].volumeInfo;
-                    openModal({ title: b.title, author: b.authors?.[0] || "", date: new Date().toISOString().split('T')[0], img: b.imageLinks?.thumbnail || "", genre: "", comment: "", isbn: tempIsbn }, -1);
-                } else {
-                    alert("国内DBにもありませんでした。手動で入力してください。");
-                    openModal({ title: "", author: "", date: new Date().toISOString().split('T')[0], img: "", genre: "", comment: "", isbn: tempIsbn }, -1);
-                }
-                cancelIsbn();
-            }
-        } catch (e) { alert("API接続エラー"); }
-        finally { btn.innerText = "この番号で検索"; }
+    function startScanner() {
+        document.getElementById('interactive').classList.remove('hidden');
+        document.getElementById('scanToggleBtn').innerText = "⏹ 停止";
+        Quagga.init({
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
+            decoder: { readers: ["ean_reader"] }
+        }, (err) => { if(!err) Quagga.start(); });
     }
+
+    function stopScanner() {
+        Quagga.stop();
+        document.getElementById('interactive').classList.add('hidden');
+        document.getElementById('scanToggleBtn').innerText = "📷 スキャン";
+    }
+
+    Quagga.onDetected(async (data) => {
+        const code = data.codeResult.code;
+        if (code.startsWith('978')) {
+            Quagga.stop();
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${code}`);
+            const json = await res.json();
+            if (json.items) {
+                const info = json.items[0].volumeInfo;
+                openModal({ title: info.title, author: info.authors?.[0] || "", date: new Date().toISOString().split('T')[0], img: info.imageLinks?.thumbnail || "", genre: "", comment: "" }, -1);
+            } else { alert("見つかりませんでした"); startScanner(); }
+        }
+    });
 
     async function searchBooks() {
         const query = document.getElementById('fTitle').value.trim();
         const resArea = document.getElementById('searchResults');
-        if (!query) return;
-        resArea.innerHTML = "検索中...";
+        if (!query) return alert("キーワードを入力してください");
+
+        resArea.innerHTML = "<div style='padding:10px'>検索中...</div>";
         resArea.style.display = "block";
+
+        const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
+
         try {
-            // 手動キーワード検索はGoogleが広範で使いやすいため続投
-            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}`);
+            // maxResultsを最大値の40に設定して取得
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
             const json = await res.json();
+            
+            let html = "";
             if (json.items) {
-                resArea.innerHTML = json.items.map(item => {
-                    const info = item.volumeInfo;
-                    const img = info.imageLinks?.thumbnail || "";
-                    return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${(info.authors?.[0] || "不明").replace(/['"`]/g, "")}', '${img}')">
-                        <img src="${img || 'https://via.placeholder.com/40x60'}">
-                        <div><strong>${info.title}</strong><br><small>${info.authors?.[0] || ""}</small></div>
-                    </div>`;
-                }).join('');
-            } else { resArea.innerHTML = "なし"; }
-        } catch(e) { resArea.innerHTML = "エラー"; }
+                // 部分一致によるフィルタリング（より柔軟に）
+                const filteredItems = json.items.filter(item => {
+                    const normalizedTitle = normalizeText(item.volumeInfo.title || "");
+                    const normalizedAuthor = normalizeText(item.volumeInfo.authors?.[0] || "");
+                    const combinedText = normalizedTitle + normalizedAuthor;
+                    return keywords.every(kw => combinedText.includes(kw));
+                });
+
+                if (filteredItems.length > 0) {
+                    html = filteredItems.map(item => {
+                        const info = item.volumeInfo;
+                        const img = info.imageLinks?.thumbnail || "";
+                        const author = info.authors?.[0] || "不明";
+                        const displayTitle = info.title.replace(new RegExp(`(${query.replace(/\s+/g, '|')})`, 'gi'), '<span class="hl">$1</span>');
+                        return `
+                            <div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${author.replace(/['"`]/g, "")}', '${img}')">
+                                <img src="${img || 'https://via.placeholder.com/40x60'}">
+                                <div style="overflow:hidden"><strong>${displayTitle}</strong><br><small>${author}</small></div>
+                            </div>`;
+                    }).join('');
+                } else {
+                    html = "<div style='padding:10px; font-size:11px; color:#666;'>絞り込み条件に合うものがありませんでした。キーワードを短くしてみてください。</div>";
+                    // 絞り込みで0件なら上位3件だけ参考として出す
+                    html += json.items.slice(0, 3).map(item => {
+                        const info = item.volumeInfo;
+                        const img = info.imageLinks?.thumbnail || "";
+                        return `<div class="search-item" onclick="selectSearchBook('${info.title.replace(/['"`]/g, "")}', '${(info.authors?.[0] || "不明").replace(/['"`]/g, "")}', '${img}')">
+                            <img src="${img || 'https://via.placeholder.com/40x60'}">
+                            <div><strong>${info.title}</strong><br><small>候補</small></div>
+                        </div>`;
+                    }).join('');
+                }
+            } else { html = "<div style='padding:10px'>APIで本が見つかりませんでした</div>"; }
+            resArea.innerHTML = html;
+        } catch(e) { resArea.innerHTML = "<div style='padding:10px'>通信エラーが発生しました</div>"; }
     }
 
-    function selectSearchBook(t, a, i) {
-        document.getElementById('fTitle').value = t; 
-        document.getElementById('fAuthor').value = a;
-        document.getElementById('editModal').dataset.img = i;
+    function selectSearchBook(title, author, img) {
+        document.getElementById('fTitle').value = title;
+        document.getElementById('fAuthor').value = author;
+        document.getElementById('editModal').dataset.img = img;
         document.getElementById('searchResults').style.display = "none";
     }
 
-    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"", isbn:"" }, -1); }
-    
+    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"" }, -1); }
+
     function openModal(data, index) {
         editingIndex = index;
         document.getElementById('fTitle').value = data.title;
@@ -175,48 +231,114 @@
         document.getElementById('fDate').value = data.date;
         document.getElementById('fGenre').value = data.genre;
         document.getElementById('fComment').value = data.comment;
-        document.getElementById('fIsbn').value = data.isbn || "";
         document.getElementById('editModal').dataset.img = data.img;
+        document.getElementById('searchResults').innerHTML = "";
+        document.getElementById('searchResults').style.display = "none";
         document.getElementById('editModal').style.display = 'flex';
         updateGenreDatalist();
     }
 
-    function closeModal() { document.getElementById('editModal').style.display = 'none'; document.getElementById('searchResults').style.display = 'none'; }
+    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
 
     function saveData() {
-        const genre = document.getElementById('fGenre').value || "未分類";
-        if (!genres.includes(genre)) { genres.push(genre); localStorage.setItem('myGenres', JSON.stringify(genres)); }
+        const genre = document.getElementById('fGenre').value;
+        if (genre && !genres.includes(genre)) {
+            genres.push(genre);
+            localStorage.setItem('myGenres', JSON.stringify(genres));
+        }
         const data = {
-            title: document.getElementById('fTitle').value, author: document.getElementById('fAuthor').value,
-            date: document.getElementById('fDate').value, genre: genre,
-            comment: document.getElementById('fComment').value, img: document.getElementById('editModal').dataset.img || "",
-            isbn: document.getElementById('fIsbn').value
+            title: document.getElementById('fTitle').value,
+            author: document.getElementById('fAuthor').value,
+            date: document.getElementById('fDate').value,
+            genre: genre || "未分類",
+            comment: document.getElementById('fComment').value,
+            img: document.getElementById('editModal').dataset.img || ""
         };
-        if (editingIndex > -1) books[editingIndex] = data; else books.unshift(data);
+        if (editingIndex > -1) books[editingIndex] = data;
+        else books.unshift(data);
         localStorage.setItem('myBooks', JSON.stringify(books));
-        closeModal(); render();
+        closeModal();
+        stopScanner();
+        render();
     }
 
-    function deleteBook(idx) { if (confirm("削除しますか？")) { books.splice(idx, 1); localStorage.setItem('myBooks', JSON.stringify(books)); render(); } }
-    
+    function deleteBook(index) {
+        if (confirm("削除しますか？")) {
+            books.splice(index, 1);
+            localStorage.setItem('myBooks', JSON.stringify(books));
+            render();
+        }
+    }
+
+    function setView(v) { currentView = v; filterDate = null; render(); }
+
     function render() {
+        updateGenreFilter();
         const listEl = document.getElementById('listDisplay');
-        listEl.innerHTML = `<div class="book-grid">${books.map((b, i) => `<div class="book-card">
-            <img src="${b.img || 'https://via.placeholder.com/150x200'}">
-            <div style="font-size:13px; margin:8px 0; height:36px; overflow:hidden;"><strong>${b.title}</strong></div>
-            <div style="display:flex; gap:5px;"><button onclick="openModal(books[${i}], ${i})" class="btn btn-sub" style="min-height:30px;">編集</button>
-            <button onclick="deleteBook(${i})" class="btn btn-sub" style="min-height:30px; color:red;">削除</button></div>
-        </div>`).join('')}</div>`;
+        const calArea = document.getElementById('calendarArea');
+        const gFilter = document.getElementById('genreFilter').value;
+        let filtered = books.map((b, i) => ({...b, originalIndex: i}));
+        if (gFilter !== 'all') filtered = filtered.filter(b => b.genre === gFilter);
+
+        calArea.classList.toggle('hidden', currentView !== 'calendar');
+        if (currentView === 'calendar') {
+            const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth() + 1).padStart(2, '0')}`;
+            filtered = filterDate ? filtered.filter(b => b.date === filterDate) : filtered.filter(b => b.date.startsWith(prefix));
+            renderCalendar();
+        }
+
+        if (currentView === 'table') {
+            listEl.innerHTML = `<table class="table-view">
+                ${filtered.map(b => `<tr>
+                    <td><img src="${b.img || 'https://via.placeholder.com/40x60'}" class="table-thumb"></td>
+                    <td><strong>${b.title}</strong><br><small>${b.author} | ${b.date}</small></td>
+                    <td style="text-align:right">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn-sm btn-sub">編</button>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn-sm btn-sub" style="color:red;border:none">消</button>
+                    </td></tr>`).join('')}</table>`;
+        } else {
+            listEl.innerHTML = `<div class="book-grid">${filtered.map(b => `
+                <div class="book-card">
+                    <img src="${b.img || 'https://via.placeholder.com/150x200'}">
+                    <div class="book-info"><strong>${b.title}</strong><br><small>${b.author}</small></div>
+                    <div class="actions">
+                        <button onclick="openModal(books[${b.originalIndex}], ${b.originalIndex})" class="btn btn-sub btn-sm">編集</button>
+                        <button onclick="deleteBook(${b.originalIndex})" class="btn btn-sub btn-sm" style="color:red;border-color:red">削除</button>
+                    </div>
+                </div>`).join('')}</div>`;
+        }
     }
 
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const year = calDate.getFullYear(); const month = calDate.getMonth();
+        document.getElementById('currentMonthLabel').innerText = `${year}年 ${month + 1}月`;
+        grid.innerHTML = "";
+        const first = new Date(year, month, 1).getDay(); const last = new Date(year, month + 1, 0).getDate();
+        for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
+        for (let d = 1; d <= last; d++) {
+            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const count = books.filter(b => b.date === dStr).length;
+            grid.innerHTML += `<div class="calendar-day ${filterDate===dStr?'active':''}" onclick="filterByDate('${dStr}')">${d}${count>0?`<span class="count-badge">${count}件</span>`:''}</div>`;
+        }
+    }
+
+    function filterByDate(d) { filterDate = filterDate === d ? null : d; render(); }
+    function changeMonth(n) { calDate.setMonth(calDate.getMonth() + n); filterDate = null; render(); }
+    function updateGenreFilter() {
+        const sel = document.getElementById('genreFilter');
+        const current = sel.value;
+        sel.innerHTML = `<option value="all">すべてのジャンル</option>` + genres.map(g => `<option value="${g}">${g}</option>`).join('');
+        sel.value = current;
+    }
     function updateGenreDatalist() {
         document.getElementById('genreOptions').innerHTML = genres.map(g => `<option value="${g}">${g}</option>`).join('');
     }
     function exportToCSV() {
-        let csv = "タイトル,著者,日付,ジャンル,コメント,ISBN\n";
-        books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment, b.isbn].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
+        let csv = "タイトル,著者,日付,ジャンル,コメント\n";
+        books.forEach(b => csv += [b.title, b.author, b.date, b.genre, b.comment].map(v => `"${(v||"").replace(/"/g,'""')}"`).join(",") + "\n");
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv;charset=utf-8;" });
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `books.csv`; a.click();
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "books.csv"; a.click();
     }
     render();
 </script>
