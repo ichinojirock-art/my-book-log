@@ -3,210 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Book Log Professional</title>
+    <title>My Book Log Ultra</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f0f2f5; color: #333; }
-        h1 { text-align: center; color: #1a73e8; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; }
+        body { font-family: sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
+        .hidden { display: none !important; }
         
-        /* カメラエリア */
-        #interactive.viewport { width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; }
+        /* UI Components */
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-main { background: var(--primary); color: white; width: 100%; margin-bottom: 10px; }
+        .btn-sub { background: white; color: var(--primary); border: 1px solid var(--primary); flex: 1; }
+        
+        /* Camera */
+        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
         #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
-        #interactive.viewport canvas { display: none; }
 
-        /* ボタン・コントロール */
-        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-scan { background: #1a73e8; color: white; }
-        .btn-toggle { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; }
-        
-        /* プレビュー画面（モーダル） */
-        #previewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; width: 85%; max-width: 400px; border-radius: 15px; }
-        .modal-content img { width: 80px; float: left; margin: 0 15px 10px 0; }
-        .modal-content input, .modal-content textarea, .modal-content select { width: 100%; margin-top: 10px; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-save { background: #28a745; color: white; flex: 1; }
-        .btn-cancel { background: #dc3545; color: white; flex: 1; }
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; width: 90%; max-width: 400px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
 
-        /* リスト表示 */
-        .card-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .book-item { background: white; padding: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 13px; }
-        .book-item img { width: 100%; border-radius: 5px; }
-        .table-view { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
-        .table-view th, .table-view td { border: 1px solid #ddd; padding: 8px; }
-        .hidden { display: none; }
+        /* Calendar */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #ddd; border: 1px solid #ddd; }
+        .calendar-day { background: white; min-height: 45px; padding: 2px; font-size: 11px; text-align: center; cursor: pointer; }
+        .calendar-day.active { background: #e8f0fe; font-weight: bold; }
+        .count-badge { display: block; background: var(--primary); color: white; border-radius: 10px; font-size: 9px; margin-top: 2px; }
+
+        /* List Items */
+        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .book-card { background: white; padding: 10px; border-radius: 8px; font-size: 12px; border: 1px solid #eee; }
+        .book-card img { width: 100%; border-radius: 4px; }
+        .actions { display: flex; gap: 5px; margin-top: 8px; }
+        .btn-sm { padding: 4px 8px; font-size: 10px; }
     </style>
 </head>
 <body>
 
     <h1>📚 My Book Log</h1>
 
-    <div class="controls">
-        <button id="startScanBtn" class="btn-scan" onclick="startScanner()">📷 バーコードを読み取る</button>
-        <div id="interactive" class="viewport"></div>
+    <div id="mainControls">
+        <button id="scanToggleBtn" class="btn btn-main" onclick="toggleScanner()">📷 バーコードを読み取る</button>
+        <button class="btn btn-sub" onclick="openManualEntry()" style="width: 100%; margin-bottom: 15px;">✍️ 手動で登録する</button>
+        <button class="btn btn-sub" onclick="exportToCSV()" style="width: 100%; margin-bottom: 15px; border-color: #28a745; color: #28a745;">📊 CSV(Excel)に出力する</button>
+        <div id="interactive" class="viewport hidden"></div>
         
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-toggle" onclick="toggleView('card')" style="flex:1">カード形式</button>
-            <button class="btn-toggle" onclick="toggleView('table')" style="flex:1">表形式</button>
+        <div class="card">
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button class="btn btn-sub" onclick="setView('card')">カード</button>
+                <button class="btn btn-sub" onclick="setView('table')">表</button>
+                <button class="btn btn-sub" onclick="setView('calendar')">カレンダー</button>
+            </div>
+            <select id="genreFilter" onchange="render()"><option value="all">すべてのジャンル</option></select>
         </div>
-        <select id="genreFilter" onchange="renderBooks()">
-            <option value="all">すべて表示</option>
-            <option value="恋愛">恋愛</option>
-            <option value="バトル">バトル</option>
-            <option value="ミステリ">ミステリ</option>
-        </select>
     </div>
 
-    <div id="previewModal">
+    <div id="calendarArea" class="card hidden">
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button onclick="changeMonth(-1)">◀</button>
+            <span id="currentMonthLabel"></span>
+            <button onclick="changeMonth(1)">▶</button>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+    </div>
+
+    <div id="listDisplay"></div>
+
+    <div id="editModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top:0">登録プレビュー</h3>
-            <div id="previewData"></div>
-            <label>ジャンル:</label>
-            <select id="editGenre">
-                <option value="恋愛">恋愛</option>
-                <option value="バトル">バトル</option>
-                <option value="ミステリ">ミステリ</option>
-                <option value="その他">その他</option>
-            </select>
-            <label>コメント:</label>
-            <textarea id="editComment" placeholder="感想を入力..."></textarea>
-            <div class="modal-buttons">
-                <button class="btn-save" onclick="saveBook()">登録する</button>
-                <button class="btn-cancel" onclick="closePreview()">中止</button>
+            <h3 id="modalTitle">書籍情報の登録/編集</h3>
+            <label>タイトル</label><input type="text" id="fTitle">
+            <label>著者</label><input type="text" id="fAuthor">
+            <label>日付</label><input type="date" id="fDate">
+            <label>ジャンル（直接入力で追加）</label>
+            <input type="text" id="fGenre" list="genreOptions" placeholder="選択または入力">
+            <datalist id="genreOptions"></datalist>
+            <label>コメント</label><textarea id="fComment"></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-main" style="background:#28a745" onclick="saveData()">保存</button>
+                <button class="btn btn-sub" onclick="closeModal()">キャンセル</button>
             </div>
         </div>
     </div>
 
-    <div id="bookListContainer" class="card-view"></div>
+    <div id="errorModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <p>本が見つかりませんでした。</p>
+            <button class="btn btn-main" onclick="retryScan()">再読み取り</button>
+            <button class="btn btn-sub" onclick="stopScanner()">終了</button>
+        </div>
+    </div>
 
 <script>
     let books = JSON.parse(localStorage.getItem('myBooks')) || [];
+    let genres = JSON.parse(localStorage.getItem('myGenres')) || ["恋愛", "バトル", "ミステリ", "その他"];
     let currentView = 'card';
-    let tempBook = null; // プレビュー中の一時データ
-    let isScanning = false;
+    let editingIndex = -1; 
+    let calDate = new Date();
+    let filterDate = null;
 
-    // スキャナー起動
+    // --- スキャナー管理 ---
+    function toggleScanner() {
+        const el = document.getElementById('interactive');
+        if (el.classList.contains('hidden')) startScanner(); else stopScanner();
+    }
+
     function startScanner() {
-        if (isScanning) return;
-        document.getElementById('interactive').style.display = 'block';
-        document.getElementById('startScanBtn').innerText = "読み取り中...";
-        isScanning = true;
-
+        document.getElementById('interactive').classList.remove('hidden');
+        document.getElementById('scanToggleBtn').innerText = "読み取りを終了する";
         Quagga.init({
             inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive') },
             decoder: { readers: ["ean_reader"] }
-        }, (err) => {
-            if (err) return console.error(err);
-            Quagga.start();
-        });
+        }, (err) => { if(!err) Quagga.start(); });
     }
 
-    // バーコード検知
+    function stopScanner() {
+        Quagga.stop();
+        document.getElementById('interactive').classList.add('hidden');
+        document.getElementById('scanToggleBtn').innerText = "📷 バーコードを読み取る";
+    }
+
     Quagga.onDetected(async (data) => {
         const code = data.codeResult.code;
         if (code.startsWith('978')) {
-            Quagga.stop(); // 検出した瞬間に止める（二重登録防止）
-            await fetchBookInfo(code);
+            Quagga.stop();
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${code}`);
+            const json = await res.json();
+            if (json.items) {
+                const info = json.items[0].volumeInfo;
+                openModal({
+                    title: info.title,
+                    author: info.authors?.[0] || "",
+                    date: new Date().toISOString().split('T')[0],
+                    img: info.imageLinks?.thumbnail || "",
+                    genre: "", comment: ""
+                }, -1);
+            } else {
+                document.getElementById('errorModal').style.display = 'flex';
+            }
         }
     });
 
-    // 書籍情報取得
-    async function fetchBookInfo(isbn) {
-        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
-        const data = await res.json();
-        
-        if (data.items) {
-            const info = data.items[0].volumeInfo;
-            tempBook = {
-                title: info.title,
-                author: info.authors ? info.authors[0] : "不明",
-                publisher: info.publisher || "不明",
-                img: info.imageLinks ? info.imageLinks.thumbnail : "",
-                date: new Date().toLocaleDateString('ja-JP'), // 現在の日付
-            };
-            showPreview();
-        } else {
-            alert("本が見つかりませんでした。");
-            startScanner(); // 再開
+    function retryScan() {
+        document.getElementById('errorModal').style.display = 'none';
+        startScanner();
+    }
+
+    // --- データ操作 ---
+    function openManualEntry() { openModal({ title:"", author:"", date: new Date().toISOString().split('T')[0], genre:"", comment:"", img:"" }, -1); }
+
+    function openModal(data, index) {
+        editingIndex = index;
+        document.getElementById('fTitle').value = data.title;
+        document.getElementById('fAuthor').value = data.author;
+        document.getElementById('fDate').value = data.date;
+        document.getElementById('fGenre').value = data.genre;
+        document.getElementById('fComment').value = data.comment;
+        document.getElementById('editModal').dataset.img = data.img;
+        document.getElementById('editModal').style.display = 'flex';
+        updateGenreDatalist();
+    }
+
+    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+    function saveData() {
+        const genre = document.getElementById('fGenre').value;
+        if (genre && !genres.includes(genre)) {
+            genres.push(genre);
+            localStorage.setItem('myGenres', JSON.stringify(genres));
         }
-    }
+        
+        const data = {
+            title: document.getElementById('fTitle').value,
+            author: document.getElementById('fAuthor').value,
+            date: document.getElementById('fDate').value,
+            genre: genre,
+            comment: document.getElementById('fComment').value,
+            img: document.getElementById('editModal').dataset.img
+        };
 
-    function showPreview() {
-        document.getElementById('interactive').style.display = 'none';
-        document.getElementById('startScanBtn').innerText = "📷 バーコードを読み取る";
-        isScanning = false;
+        if (editingIndex > -1) books[editingIndex] = data;
+        else books.unshift(data);
 
-        const previewHtml = `
-            <img src="${tempBook.img}">
-            <input type="text" id="editTitle" value="${tempBook.title}">
-            <input type="text" id="editAuthor" value="${tempBook.author}">
-            <p><small>出版社: ${tempBook.publisher} / 記録日: ${tempBook.date}</small></p>
-        `;
-        document.getElementById('previewData').innerHTML = previewHtml;
-        document.getElementById('previewModal').style.display = 'flex';
-    }
-
-    function saveBook() {
-        // 修正された値を反映
-        tempBook.title = document.getElementById('editTitle').value;
-        tempBook.author = document.getElementById('editAuthor').value;
-        tempBook.genre = document.getElementById('editGenre').value;
-        tempBook.comment = document.getElementById('editComment').value;
-
-        books.unshift(tempBook); // 新しい順に追加
         localStorage.setItem('myBooks', JSON.stringify(books));
-        
-        closePreview();
-        renderBooks();
+        closeModal();
+        stopScanner();
+        render();
     }
 
-    function closePreview() {
-        document.getElementById('previewModal').style.display = 'none';
-        document.getElementById('editComment').value = "";
-        tempBook = null;
-    }
-
-    function toggleView(mode) {
-        currentView = mode;
-        renderBooks();
-    }
-
-    function renderBooks() {
-        const container = document.getElementById('bookListContainer');
-        const filter = document.getElementById('genreFilter').value;
-        const filteredBooks = filter === 'all' ? books : books.filter(b => b.genre === filter);
-
-        if (currentView === 'card') {
-            container.className = 'card-view';
-            container.innerHTML = filteredBooks.map(b => `
-                <div class="book-item">
-                    <img src="${b.img}">
-                    <strong>${b.title}</strong><br>
-                    <small>${b.author}</small><br>
-                    <span style="font-size:10px; color:#666;">${b.date} [${b.genre}]</span>
-                    <p style="margin:5px 0 0; font-size:11px;">${b.comment}</p>
-                </div>
-            `).join('');
-        } else {
-            container.className = 'table-view-container';
-            container.innerHTML = `
-                <table class="table-view">
-                    <tr><th>表紙</th><th>タイトル</th><th>著者</th><th>日付</th><th>ジャンル</th></tr>
-                    ${filteredBooks.map(b => `
-                        <tr>
-                            <td><img src="${b.img}" style="width:40px"></td>
-                            <td>${b.title}</td>
-                            <td>${b.author}</td>
-                            <td>${b.date}</td>
-                            <td>${b.genre}</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
+    function deleteBook(index) {
+        if (confirm("このデータを削除しますか？")) {
+            books.splice(index, 1);
+            localStorage.setItem('myBooks', JSON.stringify(books));
+            render();
         }
     }
-    renderBooks();
+
+    // --- 表示制御 ---
+    function setView(v) { currentView = v; filterDate = null; render(); }
+
+    function render() {
+        updateGenreFilter();
+        const listEl = document.getElementById('listDisplay');
+        const calArea = document.getElementById('calendarArea');
+        const gFilter = document.getElementById('genreFilter').value;
+        
+        let filtered = books.filter(b => gFilter === 'all' || b.genre === gFilter);
+        if (filterDate) filtered = filtered.filter(b => b.date === filterDate);
+
+        if (currentView === 'calendar') {
+            calArea.classList.remove('hidden');
+            renderCalendar();
+        } else {
+            calArea.classList.add('hidden');
+        }
+
+        if (currentView === 'table') {
+            listEl.innerHTML = `<table style="width:100%; border-collapse:collapse; background:white; font-size:12px;">
+                ${filtered.map((b, i) => `<tr><td style="padding:5px;border-bottom:1px solid #eee;">${b.title}<br><small>${b.author}</small></td>
+                <td style="text-align:right;border-bottom:1px solid #eee;">
+                    <button onclick="openModal(books[${i}], ${i})" class="btn-sm">編</button>
+                    <button onclick="deleteBook(${i})" class="btn-sm">消</button>
+                </td></tr>`).join('')}</table>`;
+        } else {
+            listEl.innerHTML = `<div class="book-grid">${filtered.map((b, i) => `
+                <div class="book-card">
+                    <img src="${b.img || 'https://via.placeholder.com/100x140?text=No+Image'}">
+                    <strong>${b.title}</strong><br><small>${b.author}</small>
+                    <div class="actions">
+                        <button onclick="openModal(books[${i}], ${i})" class="btn btn-sub btn-sm">編集</button>
+                        <button onclick="deleteBook(${i})" class="btn btn-sub btn-sm" style="color:red;border-color:red">削除</button>
+                    </div>
+                </div>`).join('')}</div>`;
+        }
+    }
+
+    // --- カレンダー ---
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const label = document.getElementById('currentMonthLabel');
+        grid.innerHTML = "";
+        
+        const year = calDate.getFullYear();
+        const month = calDate.getMonth();
+        label.innerText = `${year}年${month + 1}月`;
+
+        const first = new Date(year, month, 1).getDay();
+        const last = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
+        for (let d = 1; d <= last; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const count = books.filter(b => b.date === dateStr).length;
+            const active = filterDate === dateStr ? 'active' : '';
+            grid.innerHTML += `<div class="calendar-day ${active}" onclick="filterByDate('${dateStr}')">
+                ${d}${count > 0 ? `<span class="count-badge">${count}件</span>` : ''}
+            </div>`;
+        }
+    }
+
+    function filterByDate(d) { filterDate = (filterDate === d) ? null : d; render(); }
+    function changeMonth(n) { calDate.setMonth(calDate.getMonth() + n); render(); }
+
+    function updateGenreFilter() {
+        const sel = document.getElementById('genreFilter');
+        const current = sel.value;
+        sel.innerHTML = `<option value="all">すべてのジャンル</option>` + genres.map(g => `<option value="${g}">${g}</option>`).join('');
+        sel.value = current;
+    }
+
+    function updateGenreDatalist() {
+        document.getElementById('genreOptions').innerHTML = genres.map(g => `<option value="${g}">`).join('');
+    }
+
+    render();
+
+    // --- エクスポート ---
+function exportToCSV() {
+    if (books.length === 0) {
+        alert("データがありません。");
+        return;
+    }
+
+    // ヘッダー行
+    let csvContent = "タイトル,著者,日付,ジャンル,コメント\n";
+
+    // データ行の作成
+    books.forEach(b => {
+        // カンマが含まれている場合に備えて、各項目をダブルクォーテーションで囲む
+        const row = [
+            `"${b.title.replace(/"/g, '""')}"`,
+            `"${b.author.replace(/"/g, '""')}"`,
+            `"${b.date}"`,
+            `"${b.genre.replace(/"/g, '""')}"`,
+            `"${b.comment.replace(/"/g, '""')}"`
+        ].join(",");
+        csvContent += row + "\n";
+    });
+
+    // Excelでの文字化け防止（BOM付きUTF-8）
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
+    
+    // ダウンロード用リンクを作成して実行
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `my_book_log_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 </script>
 </body>
 </html>
