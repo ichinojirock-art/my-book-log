@@ -75,8 +75,8 @@
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
         <h1 style="margin:0; font-size:20px;">📚 ホンログ <span style="font-size:12px; font-weight:normal; color:#888;">My Book Log</span></h1>
         <button onclick="document.getElementById('helpModal').style.display='flex'"
-                style="background:none; border:2px solid #1a73e8; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; color:#1a73e8; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
-                title="使い方・注意事項">❓</button>
+                style="background:none; border:1.5px solid #1a73e8; border-radius:50%; width:26px; height:26px; font-size:13px; cursor:pointer; color:#1a73e8; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
+                title="使い方・注意事項">?</button>
     </div>
 
     <!-- ヘルプモーダル -->
@@ -105,6 +105,9 @@
 
                 <p style="margin:0 0 14px;"><strong>💾 データの保存場所について</strong><br>
                 登録した書籍情報は<strong>このブラウザのローカルストレージ</strong>に保存されます。そのため、別のブラウザやデバイスで開いても情報は表示されません。裏を返せば、<strong>登録内容は自分のブラウザ内にしか存在せず、外部に送信されることは一切ありません</strong>ので、プライバシーの面では安心してお使いいただけます。</p>
+
+                <p style="margin:0 0 14px;"><strong>🖼️ 書影データについて</strong><br>
+                表示される書影（表紙画像）は <strong>Google Booksの書影データを引用</strong>しています。ISBNが登録されている書籍のタイトルはGoogle Booksの該当ページへリンクされます。書影はあくまで書籍紹介・個人的な読書記録の目的での引用であり、商業目的での利用はご遠慮ください。</p>
 
                 <p style="margin:0 0 14px;"><strong>📊 CSV エクスポート／インポートについて</strong><br>
                 「📊 CSV」ボタンから登録データのエクスポートとインポートが行えます。<br>
@@ -216,23 +219,30 @@
 
     <!-- シェア用画像生成モーダル -->
     <div id="shareModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content" style="max-width:360px;">
+        <div class="modal-content" style="max-width:400px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0;">📷 画像として保存</h3>
                 <button onclick="document.getElementById('shareModal').style.display='none'"
                         style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
             </div>
             <div style="font-size:13px; color:#555; margin-bottom:16px;" id="shareModalLabel"></div>
-            <div style="display:flex; gap:10px; margin-bottom:12px;">
+            <!-- 形式選択ボタン -->
+            <div id="shareSelectArea" style="display:flex; gap:10px; margin-bottom:12px;">
                 <button class="btn btn-main" onclick="generateShareImage(true)">🖼️ 書影あり</button>
                 <button class="btn btn-sub" onclick="generateShareImage(false)">📋 書影なし</button>
             </div>
+            <!-- 生成中表示 -->
             <div id="shareProgress" style="display:none; text-align:center; color:#888; font-size:13px; padding:10px;">生成中...</div>
+            <!-- プレビュー＋ダウンロードエリア -->
+            <div id="sharePreviewArea" style="display:none;">
+                <img id="sharePreviewImg" style="width:100%; border-radius:8px; border:1px solid #eee; margin-bottom:12px;" alt="プレビュー">
+                <a id="shareDownloadLink" download style="display:block;">
+                    <button class="btn btn-main" style="width:100%; font-size:15px;">⬇️ 画像をダウンロード</button>
+                </a>
+                <p style="font-size:11px; color:#999; text-align:center; margin-top:8px;">スマホの場合は画像を長押しして保存してください</p>
+            </div>
         </div>
     </div>
-
-    <!-- シェア画像描画用の隠しコンテナ -->
-    <div id="shareCanvas" style="position:fixed; left:-9999px; top:0; background:white;"></div>
 
     <!-- ISBN確認ポップアップ -->
     <div id="isbnPopup" class="modal">
@@ -891,6 +901,7 @@
     }
 
     // CSVの1行をパース（ダブルクォート・エスケープ対応）
+    // CSVの1行をパース（ダブルクォート・エスケープ対応）
     function parseCSVLine(line) {
         const result = [];
         let cur = '', inQ = false;
@@ -908,6 +919,186 @@
         }
         result.push(cur);
         return result;
+    }
+
+    // ========== シェア画像生成 ==========
+    let shareTargetBooks = [];
+    let shareLabel = '';
+
+    function openShareModal() {
+        const gFilter = document.getElementById('genreFilter').value;
+        const prefix = `${calDate.getFullYear()}-${String(calDate.getMonth()+1).padStart(2,'0')}`;
+        let list = books.map((b,i) => ({...b, originalIndex: i}));
+        if (gFilter !== 'all') list = list.filter(b => b.genre === gFilter);
+        list = filterDate
+            ? list.filter(b => b.date === filterDate)
+            : list.filter(b => b.date.startsWith(prefix));
+        if (list.length === 0) return;
+        shareTargetBooks = list;
+        shareLabel = filterDate
+            ? `${filterDate} の読書記録（${list.length}冊）`
+            : `${calDate.getFullYear()}年${calDate.getMonth()+1}月 の読書記録（${list.length}冊）`;
+        document.getElementById('shareModalLabel').textContent = shareLabel;
+        document.getElementById('shareProgress').style.display = 'none';
+        document.getElementById('sharePreviewArea').style.display = 'none';
+        document.getElementById('shareSelectArea').style.display = 'flex';
+        document.getElementById('shareModal').style.display = 'flex';
+    }
+
+    async function generateShareImage(withCover) {
+        document.getElementById('shareSelectArea').style.display = 'none';
+        document.getElementById('sharePreviewArea').style.display = 'none';
+        document.getElementById('shareProgress').style.display = 'block';
+        document.getElementById('shareProgress').textContent = '画像を生成中...';
+        await new Promise(r => setTimeout(r, 60));
+
+        try {
+            const canvas = document.createElement('canvas');
+            const DPR = 2, W = 750, PAD = 24;
+            const gbUrl = (b) => b.isbn ? `https://www.google.com/search?q=${encodeURIComponent(b.title)}&tbm=bks` : '';
+
+            if (withCover) {
+                const COLS = 3, GAP = 16;
+                const CELL_W = Math.floor((W - PAD*2 - GAP*(COLS-1)) / COLS);
+                const IMG_H = Math.floor(CELL_W * 4/3);
+                const TEXT_H = 96, CELL_H = IMG_H + TEXT_H;
+                const HEADER_H = 80, FOOTER_H = 40;
+                const rows = Math.ceil(shareTargetBooks.length / COLS);
+                const H = HEADER_H + PAD/2 + rows*(CELL_H+GAP) + PAD + FOOTER_H;
+                canvas.width = W*DPR; canvas.height = H*DPR;
+                const ctx = canvas.getContext('2d'); ctx.scale(DPR, DPR);
+
+                // 背景・ヘッダー
+                ctx.fillStyle = '#f8f9fa'; ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = '#1a73e8'; ctx.fillRect(0, 0, W, HEADER_H);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'middle';
+                ctx.fillText('📚 ホンログ', PAD, 24);
+                ctx.font = '15px sans-serif'; ctx.fillText(shareLabel, PAD, 54);
+
+                // 書籍カード（画像は並列ロード）
+                await Promise.all(shareTargetBooks.map((b, idx) => new Promise(resolve => {
+                    const col = idx % COLS, row = Math.floor(idx / COLS);
+                    const x = PAD + col*(CELL_W+GAP);
+                    const y = HEADER_H + PAD/2 + row*(CELL_H+GAP);
+
+                    // カード背景
+                    ctx.fillStyle = 'white'; roundRect(ctx, x, y, CELL_W, CELL_H, 8); ctx.fill();
+
+                    const drawText = () => {
+                        const ty = y + IMG_H + 7;
+                        ctx.fillStyle = '#1a73e8'; ctx.font = 'bold 11px sans-serif'; ctx.textBaseline = 'top';
+                        drawTextWrapped(ctx, b.title, x+6, ty, CELL_W-12, 14, 2);
+                        ctx.fillStyle = '#666'; ctx.font = '10px sans-serif';
+                        ctx.fillText(b.author||'', x+6, ty+32, CELL_W-12);
+                        ctx.fillText(b.date||'', x+6, ty+46, CELL_W-12);
+                        if (b.comment) {
+                            ctx.fillStyle = '#555'; ctx.font = 'italic 10px sans-serif';
+                            drawTextWrapped(ctx, '💬 '+b.comment, x+6, ty+60, CELL_W-12, 11, 2);
+                        }
+                        // Google Books URL（書影下にISBNある場合のみ）
+                        if (b.isbn) {
+                            ctx.fillStyle = '#aaa'; ctx.font = '8px sans-serif';
+                            ctx.fillText('google.com/search?tbm=bks', x+6, ty+82, CELL_W-12);
+                        }
+                    };
+
+                    if (b.img) {
+                        const img = new Image(); img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            ctx.save(); roundRect(ctx, x, y, CELL_W, IMG_H, 8); ctx.clip();
+                            ctx.drawImage(img, x, y, CELL_W, IMG_H); ctx.restore();
+                            drawText(); resolve();
+                        };
+                        img.onerror = () => { drawNoImage(ctx, x, y, CELL_W, IMG_H); drawText(); resolve(); };
+                        img.src = b.img;
+                    } else { drawNoImage(ctx, x, y, CELL_W, IMG_H); drawText(); resolve(); }
+                })));
+
+                // フッター
+                ctx.fillStyle = '#bbb'; ctx.font = '11px sans-serif'; ctx.textBaseline = 'middle';
+                ctx.fillText('書影はGoogle Booksより引用 / ホンログ (My Book Log)', PAD, H - FOOTER_H/2);
+
+            } else {
+                const ROW_H = 68, HEADER_H = 80, FOOTER_H = 36;
+                const H = HEADER_H + PAD/2 + shareTargetBooks.length*ROW_H + PAD + FOOTER_H;
+                canvas.width = W*DPR; canvas.height = H*DPR;
+                const ctx = canvas.getContext('2d'); ctx.scale(DPR, DPR);
+
+                ctx.fillStyle = '#f8f9fa'; ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = '#1a73e8'; ctx.fillRect(0, 0, W, HEADER_H);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'middle';
+                ctx.fillText('📚 ホンログ', PAD, 24);
+                ctx.font = '15px sans-serif'; ctx.fillText(shareLabel, PAD, 54);
+
+                shareTargetBooks.forEach((b, idx) => {
+                    const y = HEADER_H + PAD/2 + idx*ROW_H;
+                    ctx.fillStyle = idx%2===0 ? 'white' : '#f0f4fb';
+                    ctx.fillRect(PAD, y, W-PAD*2, ROW_H-2);
+
+                    ctx.fillStyle = '#1a73e8'; ctx.font = 'bold 13px sans-serif'; ctx.textBaseline = 'top';
+                    ctx.fillText(b.title, PAD+8, y+8, W-PAD*2-16);
+                    ctx.fillStyle = '#555'; ctx.font = '11px sans-serif';
+                    ctx.fillText(`${b.author||''}　${b.date||''}　📁 ${b.genre||'未分類'}`, PAD+8, y+28, W-PAD*2-16);
+                    if (b.comment) {
+                        ctx.fillStyle = '#777'; ctx.font = 'italic 11px sans-serif';
+                        ctx.fillText('💬 ' + b.comment, PAD+8, y+44, W-PAD*2-16);
+                    }
+                    if (b.isbn) {
+                        ctx.fillStyle = '#bbb'; ctx.font = '9px sans-serif';
+                        ctx.fillText('google.com/search?tbm=bks: ' + b.title, PAD+8, y+58, W-PAD*2-16);
+                    }
+                });
+
+                ctx.fillStyle = '#bbb'; ctx.font = '11px sans-serif'; ctx.textBaseline = 'middle';
+                ctx.fillText('ホンログ (My Book Log)', PAD, H - FOOTER_H/2);
+            }
+
+            // toDataURLでプレビュー表示（toBlob+直接DLはスマホでポップアップブロックされる）
+            const dataUrl = canvas.toDataURL('image/png');
+            const fname = filterDate
+                ? `honlog_${filterDate}.png`
+                : `honlog_${calDate.getFullYear()}${String(calDate.getMonth()+1).padStart(2,'0')}.png`;
+
+            document.getElementById('sharePreviewImg').src = dataUrl;
+            const link = document.getElementById('shareDownloadLink');
+            link.href = dataUrl;
+            link.download = fname;
+
+            document.getElementById('shareProgress').style.display = 'none';
+            document.getElementById('sharePreviewArea').style.display = 'block';
+
+        } catch(e) {
+            document.getElementById('shareProgress').textContent = '❌ 生成に失敗しました: ' + e.message;
+            document.getElementById('shareSelectArea').style.display = 'flex';
+        }
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath(); ctx.moveTo(x+r,y);
+        ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+        ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+        ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+        ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+    }
+    function drawNoImage(ctx, x, y, w, h) {
+        ctx.fillStyle = '#d0d0d0'; roundRect(ctx,x,y,w,h,8); ctx.fill();
+        ctx.fillStyle = '#999'; ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('NO IMAGE', x+w/2, y+h/2); ctx.textAlign = 'left';
+    }
+    function drawTextWrapped(ctx, text, x, y, maxW, lineH, maxLines) {
+        const chars = [...text]; let line = '', lc = 0;
+        for (let i = 0; i < chars.length; i++) {
+            const test = line + chars[i];
+            if (ctx.measureText(test).width > maxW && line) {
+                ctx.fillText(line, x, y + lc*lineH); lc++;
+                if (lc >= maxLines) { ctx.fillText('…', x, y+(lc-1)*lineH, maxW); return; }
+                line = chars[i];
+            } else { line = test; }
+        }
+        if (line) ctx.fillText(line, x, y+lc*lineH);
     }
 
     render();
