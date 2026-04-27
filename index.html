@@ -200,40 +200,21 @@
         <div id="calendarGrid" class="calendar-grid"></div>
         <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between; min-height:36px;">
             <span id="calFilterLabel" style="font-size:12px; color:#888;"></span>
-            <button id="shareBtn" class="hidden" style="background:#1a73e8; color:white; border:none; border-radius:8px; padding:6px 14px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="openShareModal()">📷 画像として保存</button>
+            <button id="shareBtn" class="hidden" style="background:#1a73e8; color:white; border:none; border-radius:8px; padding:6px 14px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="openShareModal()">🖼️ リスト画像出力</button>
         </div>
     </div>
 
     <div id="listDisplay"></div>
 
     <div id="shareModal" class="modal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal-content" style="max-width:480px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0;">📷 画像として保存</h3>
+        <div class="modal-content" style="max-width:400px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="margin:0;">🖼️ リスト画像出力</h3>
                 <button onclick="document.getElementById('shareModal').style.display='none'"
                         style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
             </div>
             <div style="font-size:13px; color:#555; margin-bottom:16px;" id="shareModalLabel"></div>
-            <div id="shareSelectArea" style="display:flex; gap:10px; margin-bottom:12px;">
-                <button class="btn btn-main" onclick="generateShareImage(true)">🖼️ 書影あり</button>
-                <button class="btn btn-sub" onclick="generateShareImage(false)">📋 書影なし</button>
-            </div>
             <div id="shareProgress" style="display:none; text-align:center; color:#888; font-size:13px; padding:10px;"></div>
-            <!-- 書影ありHTMLプレビュー -->
-            <div id="shareHtmlPreview" style="display:none;">
-                <div id="shareHtmlContent" style="background:#f8f9fa; border-radius:10px; overflow:hidden; border:1px solid #eee; max-height:320px; overflow-y:auto;"></div>
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button class="btn btn-main" style="font-size:13px;" onclick="openShareInNewTab()">🔗 全体を別タブで開く</button>
-                    <button class="btn btn-sub" style="font-size:13px;" onclick="document.getElementById('shareSelectArea').style.display='flex'; document.getElementById('shareHtmlPreview').style.display='none'">← 戻る</button>
-                </div>
-                <div style="background:#e8f5e9; border:1px solid #81c784; border-radius:8px; padding:10px 12px; margin-top:8px; font-size:12px; color:#2e7d32; line-height:1.7;">
-                    💡 <strong>別タブで開いて全体をスクリーンショット</strong><br>
-                    PC: <kbd style="background:#f5f5f5; border:1px solid #ccc; border-radius:3px; padding:1px 5px;">Win+Shift+S</kbd> / <kbd style="background:#f5f5f5; border:1px solid #ccc; border-radius:3px; padding:1px 5px;">Cmd+Shift+4</kbd><br>
-                    スマホ: 電源ボタン＋音量下ボタン同時押し<br>
-                    <span style="color:#558b2f;">※ 別タブではページ全体が表示されスクロールなく撮れます</span>
-                </div>
-            </div>
-            <!-- 書影なしダウンロード -->
             <div id="sharePreviewArea" style="display:none;">
                 <img id="sharePreviewImg" style="width:100%; border-radius:8px; border:1px solid #eee; margin-bottom:12px;" alt="プレビュー">
                 <a id="shareDownloadLink" download style="display:block;">
@@ -973,121 +954,56 @@
         document.getElementById('shareModalLabel').textContent = shareLabel;
         document.getElementById('shareProgress').style.display = 'none';
         document.getElementById('sharePreviewArea').style.display = 'none';
-        document.getElementById('shareHtmlPreview').style.display = 'none';
-        document.getElementById('shareSelectArea').style.display = 'flex';
         document.getElementById('shareModal').style.display = 'flex';
-    }
+        generateShareImage();    }
 
-    async function generateShareImage(withCover) {
-        document.getElementById('shareSelectArea').style.display = 'none';
-        document.getElementById('sharePreviewArea').style.display = 'none';
-        document.getElementById('shareHtmlPreview').style.display = 'none';
+    async function generateShareImage() {
         document.getElementById('shareProgress').style.display = 'block';
-        document.getElementById('shareProgress').textContent = withCover ? 'プレビューを生成中...' : '画像を生成中...';
+        document.getElementById('shareProgress').textContent = '画像を生成中...';
         await new Promise(r => setTimeout(r, 60));
 
         try {
-            if (withCover) {
-                // ===== 書影あり：HTMLでプレビュー表示 → スクリーンショット案内 =====
-                const gbUrl = (b) => b.isbn
-                    ? `https://www.google.com/search?q=isbn:${encodeURIComponent(b.isbn)}&tbm=bks` : '';
+            const canvas = document.createElement('canvas');
+            const DPR = 2, W = 750, PAD = 24;
+            const ROW_H = 68, HEADER_H = 80, FOOTER_H = 36;
+            const H = HEADER_H + PAD/2 + shareTargetBooks.length*ROW_H + PAD + FOOTER_H;
+            canvas.width = W*DPR; canvas.height = H*DPR;
+            const ctx = canvas.getContext('2d'); ctx.scale(DPR, DPR);
 
-                const cardsHtml = shareTargetBooks.map(b => {
-                    const link = gbUrl(b);
-                    const imgSrc = toHttps(b.img);
-                    const imgTag = imgSrc
-                        ? `<img src="${imgSrc}" alt="${b.title}" style="width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:#d0d0d0;">`
-                        : `<div style="width:100%; aspect-ratio:3/4; background:#d0d0d0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#999;">NO IMAGE</div>`;
-                    return `<div style="background:white; border-radius:6px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.12); font-size:11px; line-height:1.4;">
-                        ${link ? `<a href="${link}" target="_blank" rel="noopener">${imgTag}</a>` : imgTag}
-                        <div style="padding:5px 6px;">
-                            <div style="font-weight:bold; color:#1a73e8; margin-bottom:2px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${b.title}</div>
-                            <div style="color:#666; font-size:10px;">${b.author||''}</div>
-                            <div style="color:#999; font-size:9px;">${b.date||''} 📁${b.genre||'未分類'}</div>
-                            ${b.comment ? `<div style="color:#555; font-style:italic; font-size:9px; margin-top:2px;">💬${b.comment}</div>` : ''}
-                        </div>
-                    </div>`;
-                }).join('');
+            ctx.fillStyle = '#f8f9fa'; ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#1a73e8'; ctx.fillRect(0, 0, W, HEADER_H);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'middle';
+            ctx.fillText('📚 ホンログ', PAD, 24);
+            ctx.font = '15px sans-serif'; ctx.fillText(shareLabel, PAD, 54);
 
-                document.getElementById('shareHtmlContent').innerHTML = `
-                    <div style="background:#1a73e8; padding:12px 16px; color:white;">
-                        <div style="font-weight:bold; font-size:15px;">📚 ホンログ</div>
-                        <div style="font-size:11px; margin-top:2px; opacity:0.85;">${shareLabel}</div>
-                    </div>
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#f8f9fa;">
-                        ${cardsHtml}
-                    </div>
-                    <div style="text-align:right; font-size:8px; color:#bbb; padding:2px 8px 6px; background:#f8f9fa;">書影はGoogle Booksより引用 / ホンログ</div>`;
+            shareTargetBooks.forEach((b, idx) => {
+                const y = HEADER_H + PAD/2 + idx*ROW_H;
+                ctx.fillStyle = idx%2===0 ? 'white' : '#f0f4fb';
+                ctx.fillRect(PAD, y, W-PAD*2, ROW_H-2);
+                ctx.fillStyle = '#1a73e8'; ctx.font = 'bold 13px sans-serif'; ctx.textBaseline = 'top';
+                ctx.fillText(b.title, PAD+8, y+8, W-PAD*2-16);
+                ctx.fillStyle = '#555'; ctx.font = '11px sans-serif';
+                ctx.fillText(`${b.author||''}　${b.date||''}　📁 ${b.genre||'未分類'}`, PAD+8, y+28, W-PAD*2-16);
+                if (b.comment) { ctx.fillStyle='#777'; ctx.font='italic 11px sans-serif'; ctx.fillText('💬 '+b.comment, PAD+8, y+44, W-PAD*2-16); }
+            });
 
-                document.getElementById('shareProgress').style.display = 'none';
-                document.getElementById('shareHtmlPreview').style.display = 'block';
+            ctx.fillStyle = '#bbb'; ctx.font = '11px sans-serif'; ctx.textBaseline = 'middle';
+            ctx.fillText('ホンログ (My Book Log)', PAD, H - FOOTER_H/2);
 
-            } else {
-                // ===== 書影なし：Canvas → ダウンロード =====
-                const canvas = document.createElement('canvas');
-                const DPR = 2, W = 750, PAD = 24;
-                const ROW_H = 68, HEADER_H = 80, FOOTER_H = 36;
-                const H = HEADER_H + PAD/2 + shareTargetBooks.length*ROW_H + PAD + FOOTER_H;
-                canvas.width = W*DPR; canvas.height = H*DPR;
-                const ctx = canvas.getContext('2d'); ctx.scale(DPR, DPR);
-
-                ctx.fillStyle = '#f8f9fa'; ctx.fillRect(0, 0, W, H);
-                ctx.fillStyle = '#1a73e8'; ctx.fillRect(0, 0, W, HEADER_H);
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'middle';
-                ctx.fillText('📚 ホンログ', PAD, 24);
-                ctx.font = '15px sans-serif'; ctx.fillText(shareLabel, PAD, 54);
-
-                shareTargetBooks.forEach((b, idx) => {
-                    const y = HEADER_H + PAD/2 + idx*ROW_H;
-                    ctx.fillStyle = idx%2===0 ? 'white' : '#f0f4fb';
-                    ctx.fillRect(PAD, y, W-PAD*2, ROW_H-2);
-                    ctx.fillStyle = '#1a73e8'; ctx.font = 'bold 13px sans-serif'; ctx.textBaseline = 'top';
-                    ctx.fillText(b.title, PAD+8, y+8, W-PAD*2-16);
-                    ctx.fillStyle = '#555'; ctx.font = '11px sans-serif';
-                    ctx.fillText(`${b.author||''}　${b.date||''}　📁 ${b.genre||'未分類'}`, PAD+8, y+28, W-PAD*2-16);
-                    if (b.comment) { ctx.fillStyle='#777'; ctx.font='italic 11px sans-serif'; ctx.fillText('💬 '+b.comment, PAD+8, y+44, W-PAD*2-16); }
-                });
-                ctx.fillStyle = '#bbb'; ctx.font = '11px sans-serif'; ctx.textBaseline = 'middle';
-                ctx.fillText('ホンログ (My Book Log)', PAD, H - FOOTER_H/2);
-
-                const dataUrl = canvas.toDataURL('image/png');
-                const fname = filterDate
-                    ? `honlog_${filterDate}.png`
-                    : `honlog_${calDate.getFullYear()}${String(calDate.getMonth()+1).padStart(2,'0')}.png`;
-                document.getElementById('sharePreviewImg').src = dataUrl;
-                const link = document.getElementById('shareDownloadLink');
-                link.href = dataUrl; link.download = fname;
-                document.getElementById('shareProgress').style.display = 'none';
-                document.getElementById('sharePreviewArea').style.display = 'block';
-            }
+            const dataUrl = canvas.toDataURL('image/png');
+            const fname = filterDate
+                ? `honlog_${filterDate}.png`
+                : `honlog_${calDate.getFullYear()}${String(calDate.getMonth()+1).padStart(2,'0')}.png`;
+            document.getElementById('sharePreviewImg').src = dataUrl;
+            const link = document.getElementById('shareDownloadLink');
+            link.href = dataUrl; link.download = fname;
+            document.getElementById('shareProgress').style.display = 'none';
+            document.getElementById('sharePreviewArea').style.display = 'block';
 
         } catch(e) {
             document.getElementById('shareProgress').textContent = '❌ 生成に失敗しました: ' + e.message;
-            document.getElementById('shareSelectArea').style.display = 'flex';
         }
-    }
-
-    function openShareInNewTab() {
-        const content = document.getElementById('shareHtmlContent').innerHTML;
-        const html = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ホンログ - ${shareLabel}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#f8f9fa; font-family:-apple-system, BlinkMacSystemFont, sans-serif; }
-</style>
-</head>
-<body>${content}</body>
-</html>`;
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const tab = window.open(url, '_blank');
-        // タブが開いたあとObjectURLを少し後に解放
-        if (tab) setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
     function roundRect(ctx, x, y, w, h, r) {
