@@ -476,6 +476,9 @@
         document.getElementById('searchingOverlay').style.display = 'none';
     }
 
+    // Google Books APIはhttp://でURLを返すがHTTPSページからはブロックされるため強制変換
+    const toHttps = (url) => url ? url.replace(/^http:\/\//, 'https://') : '';
+
     async function searchByConfirmedIsbn() {
         if (!pendingIsbn) return;
         const isbn = pendingIsbn;
@@ -502,7 +505,7 @@
                 openModal({
                     title: info.title || "",
                     author: info.authors?.[0] || "",
-                    img: info.imageLinks?.thumbnail || "",
+                    img: toHttps(info.imageLinks?.thumbnail || ""),
                     isbn,
                     date: new Date().toISOString().split('T')[0],
                     genre: "", comment: ""
@@ -692,7 +695,7 @@
         document.getElementById('fTitle').value = info.title || "";
         document.getElementById('fAuthor').value = info.authors?.[0] || "";
         document.getElementById('fIsbn').value = isbn;
-        document.getElementById('editModal').dataset.img = img;
+        document.getElementById('editModal').dataset.img = toHttps(img);
         document.getElementById('searchResults').style.display = "none";
     }
 
@@ -1020,8 +1023,9 @@
                     if (b.img) {
                         let objectUrl = null;
                         try {
-                            // fetchでBlobとして取得 → ObjectURLに変換してCORSを回避
-                            const resp = await fetch(b.img);
+                            // http://をhttps://に変換（既存データ救済含む）
+                            const imgUrl = toHttps(b.img);
+                            const resp = await fetch(imgUrl);
                             const blob = await resp.blob();
                             objectUrl = URL.createObjectURL(blob);
                         } catch(e) { /* fetch失敗時はNO IMAGEへ */ }
