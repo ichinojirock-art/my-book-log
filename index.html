@@ -990,8 +990,8 @@
                 ctx.fillText('📚 ホンログ', PAD, 24);
                 ctx.font = '15px sans-serif'; ctx.fillText(shareLabel, PAD, 54);
 
-                // 書籍カード（画像は並列ロード）
-                await Promise.all(shareTargetBooks.map((b, idx) => new Promise(resolve => {
+                // 書籍カード（画像はfetch経由でCORSを回避して並列ロード）
+                await Promise.all(shareTargetBooks.map((b, idx) => new Promise(async resolve => {
                     const col = idx % COLS, row = Math.floor(idx / COLS);
                     const x = PAD + col*(CELL_W+GAP);
                     const y = HEADER_H + PAD/2 + row*(CELL_H+GAP);
@@ -1012,15 +1012,35 @@
                         }
                     };
 
+                    const drawImgToCanvas = (imgEl) => {
+                        ctx.save(); roundRect(ctx, x, y, CELL_W, IMG_H, 8); ctx.clip();
+                        ctx.drawImage(imgEl, x, y, CELL_W, IMG_H); ctx.restore();
+                    };
+
                     if (b.img) {
-                        const img = new Image(); img.crossOrigin = 'anonymous';
-                        img.onload = () => {
-                            ctx.save(); roundRect(ctx, x, y, CELL_W, IMG_H, 8); ctx.clip();
-                            ctx.drawImage(img, x, y, CELL_W, IMG_H); ctx.restore();
-                            drawText(); resolve();
-                        };
-                        img.onerror = () => { drawNoImage(ctx, x, y, CELL_W, IMG_H); drawText(); resolve(); };
-                        img.src = b.img;
+                        let objectUrl = null;
+                        try {
+                            // fetchでBlobとして取得 → ObjectURLに変換してCORSを回避
+                            const resp = await fetch(b.img);
+                            const blob = await resp.blob();
+                            objectUrl = URL.createObjectURL(blob);
+                        } catch(e) { /* fetch失敗時はNO IMAGEへ */ }
+
+                        if (objectUrl) {
+                            const img = new Image();
+                            img.onload = () => {
+                                drawImgToCanvas(img);
+                                URL.revokeObjectURL(objectUrl); // メモリ解放
+                                drawText(); resolve();
+                            };
+                            img.onerror = () => {
+                                URL.revokeObjectURL(objectUrl);
+                                drawNoImage(ctx, x, y, CELL_W, IMG_H); drawText(); resolve();
+                            };
+                            img.src = objectUrl;
+                        } else {
+                            drawNoImage(ctx, x, y, CELL_W, IMG_H); drawText(); resolve();
+                        }
                     } else { drawNoImage(ctx, x, y, CELL_W, IMG_H); drawText(); resolve(); }
                 })));
 
