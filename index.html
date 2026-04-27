@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ホンログ</title>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: #333; }
@@ -75,7 +74,7 @@
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
         <h1 style="margin:0; font-size:20px;">📚 ホンログ <span style="font-size:12px; font-weight:normal; color:#888;">My Book Log</span></h1>
         <button onclick="document.getElementById('helpModal').style.display='flex'"
-                style="background:none; border:1.5px solid #1a73e8; border-radius:50%; width:26px; height:26px; font-size:13px; cursor:pointer; color:#1a73e8; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
+                style="background:none; border:1px solid #1a73e8; border-radius:50%; width:18px; height:18px; font-size:9px; cursor:pointer; color:#1a73e8; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:bold;"
                 title="使い方・注意事項">?</button>
     </div>
 
@@ -601,6 +600,10 @@
     }
 
     // ========== タイトル検索（Google Books API）==========
+    let searchAllResults = []; // 全件キャッシュ
+    let searchPage = 0;
+    const SEARCH_PAGE_SIZE = 10;
+
     async function searchBooks() {
         const query = document.getElementById('fTitle').value.trim();
         const resArea = document.getElementById('searchResults');
@@ -608,32 +611,19 @@
 
         resArea.innerHTML = "<div style='padding:10px'>検索中...</div>";
         resArea.style.display = "block";
+        searchAllResults = [];
+        searchPage = 0;
 
         const keywords = query.split(/\s+/).map(kw => normalizeText(kw));
-
-        const renderItem = (info, isbn) => {
-            const safeTitle = (info.title || "").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-            const safeAuthor = (info.authors?.[0] || "").replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-            const img = info.imageLinks?.thumbnail || "";
-            const safeImg = img.replace(/'/g, "\\'");
-            return `<div class="search-item" onclick="selectSearchBook('${safeTitle}','${safeAuthor}','${safeImg}','${isbn}')">
-                <img src="${img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
-                <div><strong>${info.title || ""}</strong><br><small>${info.authors?.[0] || ""}</small></div>
-            </div>`;
-        };
 
         try {
             const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=40`);
             const json = await res.json();
 
-            // クォータ超過チェック
             if (json.error && json.error.code === 429) {
-                resArea.innerHTML = `<div style='padding:12px; color:#c00;'>
-                    ⏳ 1日の検索上限に達しました。時間を置いて再試行してください。
-                </div>`;
+                resArea.innerHTML = `<div style='padding:12px; color:#c00;'>⏳ 1日の検索上限に達しました。時間を置いて再試行してください。</div>`;
                 return;
             }
-
             if (!json.items || json.items.length === 0) {
                 resArea.innerHTML = "<div style='padding:10px'>見つかりませんでした</div>";
                 return;
@@ -649,21 +639,60 @@
                 return;
             }
 
-            resArea.innerHTML = titleMatched.slice(0, 15).map(item => {
-                const isbn = item.volumeInfo.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
-                return renderItem(item.volumeInfo, isbn);
-            }).join('');
+            searchAllResults = titleMatched;
+            renderSearchPage();
 
         } catch(e) {
             resArea.innerHTML = "<div style='padding:10px'>エラーが発生しました</div>";
         }
     }
 
-    function selectSearchBook(t, a, i, isbn) {
-        document.getElementById('fTitle').value = t; 
-        document.getElementById('fAuthor').value = a;
-        document.getElementById('fIsbn').value = isbn; 
-        document.getElementById('editModal').dataset.img = i;
+    function renderSearchPage() {
+        const resArea = document.getElementById('searchResults');
+        const total = searchAllResults.length;
+        const start = searchPage * SEARCH_PAGE_SIZE;
+        const end = Math.min(start + SEARCH_PAGE_SIZE, total);
+        const pageItems = searchAllResults.slice(start, end);
+        const totalPages = Math.ceil(total / SEARCH_PAGE_SIZE);
+
+        const itemsHtml = pageItems.map(item => {
+            const info = item.volumeInfo;
+            const isbn = info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
+            const img = info.imageLinks?.thumbnail || "";
+            // データをdata属性に持たせてonclick内での文字列エスケープ問題を回避
+            const idx = searchAllResults.indexOf(item);
+            return `<div class="search-item" onclick="selectSearchByIndex(${idx})">
+                <img src="${img || 'https://via.placeholder.com/40x60'}" onerror="this.src='https://via.placeholder.com/40x60'">
+                <div><strong>${info.title || ""}</strong><br><small>${info.authors?.[0] || ""}</small>${isbn ? `<br><small style="color:#aaa;">ISBN: ${isbn}</small>` : ''}</div>
+            </div>`;
+        }).join('');
+
+        const pagingHtml = totalPages > 1 ? `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-top:1px solid #eee; font-size:12px; color:#666;">
+                <button onclick="changeSearchPage(-1)" ${searchPage === 0 ? 'disabled' : ''} style="padding:4px 10px; border:1px solid #ccc; border-radius:6px; background:white; cursor:pointer; font-size:12px;">◀ 前へ</button>
+                <span>${start+1}〜${end} 件 / ${total}件</span>
+                <button onclick="changeSearchPage(1)" ${end >= total ? 'disabled' : ''} style="padding:4px 10px; border:1px solid #ccc; border-radius:6px; background:white; cursor:pointer; font-size:12px;">次へ ▶</button>
+            </div>` : `<div style="padding:4px 10px 6px; font-size:11px; color:#aaa; text-align:right;">${total}件</div>`;
+
+        resArea.innerHTML = itemsHtml + pagingHtml;
+    }
+
+    function changeSearchPage(dir) {
+        const totalPages = Math.ceil(searchAllResults.length / SEARCH_PAGE_SIZE);
+        searchPage = Math.max(0, Math.min(searchPage + dir, totalPages - 1));
+        renderSearchPage();
+    }
+
+    function selectSearchByIndex(idx) {
+        const item = searchAllResults[idx];
+        if (!item) return;
+        const info = item.volumeInfo;
+        const isbn = info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier || "";
+        const img = info.imageLinks?.thumbnail || "";
+        document.getElementById('fTitle').value = info.title || "";
+        document.getElementById('fAuthor').value = info.authors?.[0] || "";
+        document.getElementById('fIsbn').value = isbn;
+        document.getElementById('editModal').dataset.img = img;
         document.getElementById('searchResults').style.display = "none";
     }
 
